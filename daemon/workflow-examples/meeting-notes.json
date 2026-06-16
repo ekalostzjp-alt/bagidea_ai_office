@@ -1,0 +1,13 @@
+{
+  "id": "example-meeting-notes",
+  "name": "Example: Summarize meeting notes",
+  "nodes": [
+    { "id": "n1", "type": "trigger", "text": "When started (attach the meeting transcript file)", "x": 140, "y": 40 },
+    { "id": "n2", "type": "fetch", "text": "Read the meeting transcript file", "x": 140, "y": 210 },
+    { "id": "n3", "type": "action", "text": "Summarize into topics + action items + owners", "x": 140, "y": 380 },
+    { "id": "n4", "type": "output", "text": "Save to workspace/notes.md and report a short summary to the CEO", "x": 140, "y": 550 }
+  ],
+  "edges": [
+    { "from": "n1", "to": "n2" }, { "from": "n2", "to": "n3" }, { "from": "n3", "to": "n4" }
+  ]
+}

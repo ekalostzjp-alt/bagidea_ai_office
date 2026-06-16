@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Documentation — BagIdea Office</title>
+<meta name="description" content="Full documentation for BagIdea Office: what it is, every feature, installation, usage, plugins, and the complete CLI reference.">
+<link rel="icon" href="img/logo.png">
+<link rel="stylesheet" href="assets/site.css">
+<script defer src="assets/i18n.js"></script>
+</head>
+<body>
+
+<nav>
+  <div class="wrap">
+    <a class="brand" href="index.html"><img src="img/logo.png" alt="BagIdea Office logo"> BAG<span>IDEA</span> Office</a>
+    <div class="links">
+      <a class="nav-hide" href="index.html#features" data-i18n="nav_features">Features</a>
+      <a class="nav-hide" href="index.html#install" data-i18n="nav_install">Install</a>
+      <a class="nav-hide" href="index.html#sponsors" data-i18n="nav_sponsors">Sponsors</a>
+      <a class="btn ghost" href="https://github.com/ekalostzjp-alt/begidea_ai_office" target="_blank" rel="noopener" data-i18n="cta_github">GitHub</a>
+      <div class="langpick"><button class="toggle">🌐 <span class="cur">EN</span></button></div>
+    </div>
+  </div>
+</nav>
+
+<div class="docwrap">
+  <!-- SIDEBAR -->
+  <aside class="docnav">
+    <a href="index.html" data-i18n="d_back">← Home</a>
+    <h4 data-i18n="dn_intro">Introduction</h4>
+    <a href="#intro" data-i18n="dn_what">What it is</a>
+    <a href="#concepts" data-i18n="dn_concepts">Core concepts</a>
+    <h4 data-i18n="dn_install">Installation</h4>
+    <a href="#install-win" data-i18n="dn_install_win">Windows (one-shot)</a>
+    <a href="#install-mac" data-i18n="dn_install_mac">macOS (one-shot)</a>
+    <a href="#install-manual" data-i18n="dn_install_manual">Manual build</a>
+    <a href="#install-first" data-i18n="dn_install_first">First run</a>
+    <a href="#install-fix" data-i18n="dn_install_fix">If it fails</a>
+    <h4 data-i18n="dn_using">Using it</h4>
+    <a href="#chat" data-i18n="dn_chat">Chat & the CEO</a>
+    <a href="#projects" data-i18n="dn_projects">Projects</a>
+    <a href="#security" data-i18n="dn_security">Permissions</a>
+    <a href="#editor" data-i18n="dn_editor">3D Editor</a>
+    <a href="#voice" data-i18n="dn_voice">Voice & channels</a>
+    <a href="#updates" data-i18n="dn_updates">Updates & start-up</a>
+    <h4 data-i18n="dn_features">More</h4>
+    <a href="#plugins" data-i18n="dn_plugins">Plugins & skills</a>
+    <a href="#lang" data-i18n="dn_lang">Languages</a>
+    <h4 data-i18n="dn_cli">CLI</h4>
+    <a href="#cli" data-i18n="dn_cli">CLI reference</a>
+    <a href="#faq" data-i18n="dn_faq">FAQ</a>
+  </aside>
+
+  <!-- CONTENT -->
+  <main class="doc">
+    <h1 data-i18n="d_title">Documentation</h1>
+    <p class="muted" data-i18n="d_sub">Everything about BagIdea Office — what it is, every feature, how to install, and the full CLI.</p>
+
+    <h2 id="intro" data-i18n="d_intro_h">Introduction</h2>
+    <p data-i18n="d_intro_p1">BagIdea Office is a living AI-agent office that runs as your desktop wallpaper. Every AI agent on your machine becomes a pixel-art employee in an HD-2D office: they walk to their desks when real work starts, gather at Security to ask permission, hold meetings, learn skills, and the lights follow your real local time.</p>
+    <p data-i18n="d_intro_p2">It is not a dashboard and not a chat window — it is a world that renders the true state of your Claude Code sessions, headless agent runs and custom scripts as living characters, behind your desktop icons.</p>
+    <p data-i18n="d_intro_p3">Three independent layers keep it robust: a zero-dependency Node daemon (the source of truth), a Godot 4 renderer (the wallpaper), and a lightweight overlay UI (chat, settings, approvals). The daemon keeps agents running even if rendering restarts.</p>
+    <img src="img/world.png" alt="BagIdea Office overview">
+
+    <h2 id="what" data-i18n="d_what_h">What it is</h2>
+    <p data-i18n="d_what_p">At its heart, BagIdea Office is an operations layer for AI agents — given a place. Instead of a flat list of tasks, you get a spatial, honest view of what your agents are actually doing:</p>
+    <ul>
+      <li data-i18n="d_what_l1">Real Claude Code sessions, spawned with each agent's persona, skills and allowed tools.</li>
+      <li data-i18n="d_what_l2">A CEO → Director → team chain of command you drive by giving orders.</li>
+      <li data-i18n="d_what_l3">Spatialized permission approvals — agents walk to Security for tools you haven't granted.</li>
+      <li data-i18n="d_what_l4">Real project folders, resumable sessions, and self-splitting sub-agents for parallel work.</li>
+    </ul>
+
+    <h2 id="concepts" data-i18n="d_concepts_h">Core concepts</h2>
+    <h3 data-i18n="d_c_ceo_h">You are the CEO</h3>
+    <p data-i18n="d_c_ceo_p">The gold seat is you. Type an order and the Director (the main Claude agent) walks over, takes it, plans, and delegates to the team.</p>
+    <h3 data-i18n="d_c_director_h">The Director</h3>
+    <p data-i18n="d_c_director_p">main is Claude itself — the office manager who answers you, creates projects, and routes work with DELEGATE lines.</p>
+    <h3 data-i18n="d_c_ghost_h">Ghosts (sub-agents)</h3>
+    <p data-i18n="d_c_ghost_p">When a job parallelizes, an agent splits into translucent clones that work on the Ghost Deck and merge back with a synthesis.</p>
+    <h3 data-i18n="d_c_grid_h">The room grid</h3>
+    <p data-i18n="d_c_grid_p">The floor is a 3×3 jigsaw of identical rooms; any room fits any slot, so you can rearrange the whole office in the editor.</p>
+
+    <h2 id="install-win" data-i18n="d_install_h">Installation</h2>
+    <div class="note" data-i18n="d_install_plat">Platform support: Windows 11 (stable, wallpaper embedding uses the WorkerW technique) and macOS 13+ (beta, new this release). A Linux backend is planned for a later update.</div>
+    <h3 data-i18n="d_install_win_h">Windows — one-shot installer (recommended)</h3>
+    <p data-i18n="d_install_win_p">Open PowerShell and run the command below. It installs every dependency (Git, Node LTS, Rust, Godot 4.6.3, Claude Code CLI), clones the app to %LOCALAPPDATA%\BagIdeaOffice, builds the desktop shell, brands the window icon, adds bagidea to your PATH, and creates a Start Menu shortcut. It is safe to re-run — each step skips what's already done.</p>
+    <pre><code>irm https://raw.githubusercontent.com/ekalostzjp-alt/begidea_ai_office/main/installer/install.ps1 | iex</code></pre>
+
+    <h3 id="install-mac" data-i18n="d_install_mac_h">macOS — one-shot installer (beta)</h3>
+    <p data-i18n="d_install_mac_p">Open Terminal and run the command below. It installs the dependencies (Git, Node, Rust, Godot, Claude Code CLI), clones the app to ~/BagIdeaOffice, builds the desktop shell and the wallpaper-embed shim, wires the Claude hooks, and sets up the bagidea command. Safe to re-run.</p>
+    <pre><code>curl -fsSL https://raw.githubusercontent.com/ekalostzjp-alt/begidea_ai_office/main/installer/install-mac.sh | bash</code></pre>
+
+    <h3 id="install-manual" data-i18n="d_install_manual_h">Manual build</h3>
+    <p data-i18n="d_install_manual_p">Clone the repository, point the Claude hook paths at your clone, then build the Rust shell:</p>
+    <pre><code>git clone https://github.com/ekalostzjp-alt/begidea_ai_office.git
+cd begidea_ai_office\shell
+cargo build --release   # → shell/target/release/bagidea-office-shell.exe</code></pre>
+
+    <h3 id="install-first" data-i18n="d_install_first_h">First run</h3>
+    <p data-i18n="d_install_first_p">Log in to Claude once, then start the office. Your wallpaper becomes the live office; a chat head and tray icon appear.</p>
+    <pre><code>claude          # sign in (first time only)
+bagidea start   # launch the office</code></pre>
+
+    <h3 id="install-fix" data-i18n="d_install_fix_h">If the install fails</h3>
+    <p data-i18n="d_install_fix_p">The installer is built to finish on a bare machine, but here are the common snags and their fixes. Almost all are solved by opening a NEW terminal and re-running the installer — re-runs are safe and keep your data.</p>
+    <ul class="fixlist">
+      <li data-i18n-html="d_install_fix_l1"></li>
+      <li data-i18n-html="d_install_fix_l2"></li>
+      <li data-i18n-html="d_install_fix_l3"></li>
+      <li data-i18n-html="d_install_fix_l4"></li>
+      <li data-i18n-html="d_install_fix_l5"></li>
+      <li data-i18n-html="d_install_fix_l6"></li>
+    </ul>
+
+    <h2 id="chat" data-i18n="d_using_h">Using it</h2>
+    <h3 data-i18n="d_chat_h">Chat & the CEO</h3>
+    <p data-i18n="d_chat_p">The chat panel opens on your CEO seat. Type an order in the CEO seat and the Director walks over to take it, plans, and delegates — you watch the hand-offs on the wallpaper, and the summary is walked back to you. To talk to any agent directly, click their face in the rail or on the live map. Every conversation is a resumable thread with full history.</p>
+    <img src="img/overlay.png" alt="The chat overlay">
+
+    <h3 id="projects" data-i18n="d_projects_h">Projects</h3>
+    <p data-i18n="d_projects_p">Register real folders as projects (with PLACE shorthands like "classroom → D:\Learning"). The Director can create new projects himself and route work into them; the assignee's Claude session runs inside that directory and is resumable. One occupant at a time: while an agent works a project you can't open it (a ⏹ stop-agent button with a two-click confirm lets you take over), and while you have it open an agent won't enter.</p>
+    <img src="img/projects.png" alt="The projects panel">
+    <img src="img/org.png" alt="The auto org chart">
+    <p data-i18n="d_org_p">The whole roster arranges itself into an org chart (🗂 → ORG): CEO → Director → mid → staff. Hire from ⚙ → AGENTS: name, role, avatar + aura, tier, a Persona Copilot that fills the prompt and picks fitting skills + tools, one of 16 voices, and the exact tools each agent may run.</p>
+
+    <h3 id="security" data-i18n="d_security_h">Permissions</h3>
+    <p data-i18n="d_security_p">Tools you grant in an agent's profile run silently — and the agent never even leaves its desk. For anything else, the agent walks to the Security Center and waits while a card pops up with the exact command. Choose Allow, ✓✓ Forever (remembers the grant), or Deny. No answer in 50 seconds auto-denies and the agent re-plans.</p>
+
+    <h3 id="editor" data-i18n="d_editor_h">The 3D Editor</h3>
+    <p data-i18n="d_editor_p">Open the editor (the 🎨 button or bagidea editor) to rearrange the office in true 3D: click two rooms to swap them on the 3×3 grid, move the Ghost Deck, place furniture and decor, and import your own .glb/.gltf/.fbx models and images. Save and the wallpaper updates instantly — furniture, agent seats, navigation and pets all follow.</p>
+    <img src="img/editor.png" alt="The 3D Office Editor">
+
+    <h3 id="voice" data-i18n="d_voice_h">Voice & channels</h3>
+    <p data-i18n="d_voice_p">Hold F6 anywhere to speak a command to the office. Give agents one of 16 TTS voices (split clearly ♀/♂). Call the main agent for a realtime voice conversation (Gemini Live) in its assigned voice. Connect Telegram, Discord or LINE and command your office from your phone — replies come back on the same channel.</p>
+
+    <h3 id="updates" data-i18n="d_updates_h">Updates &amp; start-up</h3>
+    <p data-i18n="d_updates_p">A VERSION file marks real releases: the office only shows the 🔄 update banner when main's version is newer than yours, so routine commits never nag you. Click the banner or run bagidea update to pull, rebuild and relaunch (your data is kept). Set it to launch with Windows from the tray, settings, or bagidea startup on.</p>
+
+    <h2 id="plugins" data-i18n="d_plugins_h">Plugins, skills & tools</h2>
+    <p data-i18n="d_plugins_p">Plugins extend the office for real — a folder with a manifest can add UI panels, HTTP routes, and commands agents can drive, with ctx access to the registry, feed, broadcasting and even running Claude turns. Two core plugins ship in the box (🎵 Music Player, 🧮 Calculator); install more from any GitHub repo. Start from the official template, or read the worked example repos.</p>
+    <img src="img/plugins.png" alt="The plugins panel listing installed plugins, with install-from-GitHub">
+    <img src="img/briefing.png" alt="A morning briefing rendered inside a plugin panel">
+    <pre><code>bagidea plugin install https://github.com/bagidea/bagidea-office-template</code></pre>
+    <p data-i18n="d_skills_p">Every office ships with a library of builtin skills (deep research, office control, plugin building, code review, docs, debugging, data wrangling, project kickoff, diagrams) you can assign to any agent, plus Hermes-style skills the office learns automatically after real work. Add new raw capability via MCP servers.</p>
+
+    <h2 id="lang" data-i18n="d_lang_h">Languages</h2>
+    <p data-i18n="d_lang_p">The whole interface supports 14 languages. English is the default; pick another in settings and the office translates office-wide (and remembers your choice per machine). This website speaks the same 14 languages — use the picker in the top bar.</p>
+    <p><span class="tag">en</span> <span class="tag">ไทย</span> <span class="tag">中文</span> <span class="tag">Español</span> <span class="tag">हिन्दी</span> <span class="tag">العربية</span> <span class="tag">Português</span> <span class="tag">Русский</span> <span class="tag">日本語</span> <span class="tag">Deutsch</span> <span class="tag">Français</span> <span class="tag">한국어</span> <span class="tag">Indonesia</span> <span class="tag">Tiếng Việt</span></p>
+
+    <h2 id="cli" data-i18n="d_cli_h">CLI reference</h2>
+    <p data-i18n="d_cli_p">The installer puts bagidea on your PATH. It talks to the running office and can start it. A few highlights:</p>
+    <table>
+      <tr><th>Command</th><th>Does</th></tr>
+      <tr><td><code>bagidea start | stop | restart</code></td><td>Launch / stop / restart the whole suite</td></tr>
+      <tr><td><code>bagidea status</code></td><td>Health + agents + projects + who's working</td></tr>
+      <tr><td><code>bagidea stats</code></td><td>Dashboard: runs / cost / busiest / uptime</td></tr>
+      <tr><td><code>bagidea ask "&lt;message&gt;"</code></td><td>Order the Director and wait for the final answer</td></tr>
+      <tr><td><code>bagidea chat &lt;agent&gt; "&lt;msg&gt;"</code></td><td>Hand a task to a specific agent (fire-and-forget)</td></tr>
+      <tr><td><code>bagidea agents · projects</code></td><td>List staff / projects with live status</td></tr>
+      <tr><td><code>bagidea open "&lt;project&gt;"</code></td><td>Open a project window (same as ▶)</td></tr>
+      <tr><td><code>bagidea proposals</code></td><td>Team project pitches awaiting a verdict</td></tr>
+      <tr><td><code>bagidea proposal show &lt;id&gt;</code></td><td>Read a pitch in full</td></tr>
+      <tr><td><code>bagidea proposal approve|reject &lt;id&gt; [note]</code></td><td>Decide on a pitch (+ optional note to the team)</td></tr>
+      <tr><td><code>bagidea plugins</code></td><td>List installed plugins</td></tr>
+      <tr><td><code>bagidea plugin install &lt;git-url&gt; · remove &lt;id&gt;</code></td><td>Add / remove a plugin</td></tr>
+      <tr><td><code>bagidea lang &lt;code&gt;</code></td><td>Show / set the office language (14 languages)</td></tr>
+      <tr><td><code>bagidea say "&lt;text&gt;" · voices</code></td><td>Speak via TTS · list voice presets</td></tr>
+      <tr><td><code>bagidea image "&lt;prompt&gt;"</code></td><td>Generate an AI image into the office</td></tr>
+      <tr><td><code>bagidea channels · keys</code></td><td>Channel + API-key status</td></tr>
+      <tr><td><code>bagidea feed</code></td><td>Live office event stream in your terminal</td></tr>
+      <tr><td><code>bagidea startup [on|off]</code></td><td>Launch the office with Windows (show / set)</td></tr>
+      <tr><td><code>bagidea update · version</code></td><td>Update to the latest release · show current version</td></tr>
+      <tr><td><code>bagidea --help · --version</code></td><td>Full command list / current build</td></tr>
+    </table>
+    <img src="img/cli.png" alt="bagidea CLI help">
+
+    <h2 id="faq" data-i18n="d_faq_h">FAQ</h2>
+    <h3 data-i18n="d_faq_q1">Does it cost money to run?</h3>
+    <p data-i18n="d_faq_a1">The app is free and open source (MIT). Agents run through your own Claude Code login, so usage follows your existing Claude account or subscription — there is no separate BagIdea fee.</p>
+    <h3 data-i18n="d_faq_q2">Is my code/data sent anywhere?</h3>
+    <p data-i18n="d_faq_a2">The daemon runs locally on 127.0.0.1. Agents are Claude Code sessions, so they use Claude like any Claude Code project. Optional features (voice, image, realtime) use your own OpenAI/Gemini keys only when you enable them.</p>
+    <h3 data-i18n="d_faq_q3">Which platforms are supported?</h3>
+    <p data-i18n="d_faq_a3">Windows 11 and macOS 13+ (beta) today. A Linux wallpaper backend is on the roadmap.</p>
+    <h3 data-i18n="d_faq_q4">Can I build my own plugin?</h3>
+    <p data-i18n="d_faq_a4">Yes — fork the official template repo. A person or an agent can build a working plugin from it in minutes; the full spec is in the plugin guide.</p>
+  </main>
+</div>
+
+<footer>
+  <div class="wrap">
+    <div class="copyright" data-i18n="copyright">© 2026 BagIdea Innovation Co., Ltd. · MIT-licensed open source.</div>
+  </div>
+</footer>
+
+<a href="#" class="toplink" aria-label="Back to top">↑</a>
+<script>
+  const topBtn = document.querySelector(".toplink");
+  addEventListener("scroll", () => topBtn.classList.toggle("show", scrollY > 600));
+  // highlight the active doc section in the sidebar
+  const links = [...document.querySelectorAll(".docnav a[href^='#']")];
+  const map = links.map((a) => ({ a, el: document.querySelector(a.getAttribute("href")) })).filter((x) => x.el);
+  addEventListener("scroll", () => {
+    let cur = map[0];
+    for (const m of map) if (m.el.getBoundingClientRect().top <= 90) cur = m;
+    links.forEach((a) => a.classList.toggle("active", cur && a === cur.a));
+  });
+</script>
+</body>
+</html>

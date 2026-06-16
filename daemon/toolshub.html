@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tools Hub — BagIdea Office</title>
+<style>
+  :root { --bg:#0a111d; --card:#0e1626; --line:rgba(255,255,255,.10); --accent:#5ec8ff; --text:#e8eef6; --dim:#90a0b6; }
+  * { box-sizing:border-box; }
+  html,body { margin:0; min-height:100%; background:var(--bg); color:var(--text);
+    font:13px/1.55 -apple-system,Segoe UI,Roboto,"Noto Sans Thai",sans-serif; }
+  ::-webkit-scrollbar { width:8px; } ::-webkit-scrollbar-thumb { background:rgba(94,200,255,.35); border-radius:8px; }
+  .wrap { max-width:780px; margin:0 auto; padding:18px 18px 50px; }
+  h1 { font-size:19px; margin:4px 0 2px; }
+  .intro { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:13px 15px; margin:10px 0 16px; font-size:12.7px; color:#cdd9e8; }
+  .intro b { color:var(--text); } .intro ol { margin:8px 0 0; padding-left:20px; } .intro li { margin:3px 0; }
+  .intro .warn { color:#ffcf8a; margin-top:9px; }
+  .sec { font-size:12px; color:var(--dim); margin:18px 0 8px; letter-spacing:.4px; text-transform:uppercase; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:13px 15px; margin-bottom:11px; }
+  .card.on { border-color:rgba(103,232,160,.4); }
+  .card .top { display:flex; align-items:center; gap:10px; }
+  .card .ic { font-size:22px; } .card h3 { margin:0; font-size:15px; flex:1; }
+  .pill { font-size:10.5px; padding:2px 8px; border-radius:999px; border:1px solid var(--line); color:var(--dim); white-space:nowrap; }
+  .pill.risk { color:#ffcf8a; border-color:rgba(255,180,90,.4); }
+  .pill.on { color:#67e8a0; border-color:rgba(103,232,160,.5); }
+  .pill.feat { color:var(--accent); border-color:rgba(94,200,255,.5); }
+  .card p { color:var(--dim); margin:8px 0; font-size:12.5px; }
+  .row { display:flex; gap:8px; align-items:center; margin-top:8px; }
+  input.cmd { flex:1; background:#0a1020; border:1px solid var(--line); color:var(--text); border-radius:8px;
+    padding:7px 10px; font:12px ui-monospace,Consolas,monospace; }
+  button { background:#13203a; color:var(--text); border:1px solid var(--line); border-radius:8px;
+    padding:7px 14px; cursor:pointer; font-weight:600; font-size:12px; white-space:nowrap; }
+  button:hover { border-color:var(--accent); color:var(--accent); }
+  button.add { background:#0e4d8c; border-color:rgba(94,200,255,.5); }
+  button.add:hover { background:#1466b3; color:#fff; }
+  button.rm:hover { border-color:#ff7b7b; color:#ff7b7b; }
+  a { color:var(--accent); }
+  #toast { position:fixed; bottom:14px; left:50%; transform:translateX(-50%); background:#13203a;
+    border:1px solid var(--accent); border-radius:10px; padding:8px 16px; opacity:0; transition:opacity .2s; max-width:90%; }
+  #toast.show { opacity:1; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🧰 Tools Hub</h1>
+  <div class="intro" id="intro"></div>
+  <div id="custom"></div>
+  <div id="installed"></div>
+  <div id="available"></div>
+  <p id="footer" style="font-size:11.5px;color:var(--dim);margin-top:18px"></p>
+</div>
+<div id="toast"></div>
+<script src="/winlang.js"></script>
+<script>
+  let L = "th";  // office language: th / en hardcoded, others auto-translated
+  let WL = null; // WinLang instance for non-English languages (Thai → lang via /i18n)
+  // Static UI strings, both languages.
+  const UI = {
+    th: {
+      whatTitle:"MCP คืออะไร?",
+      what:"คือวิธีเสริม “ความสามารถใหม่” ให้ทีม AI ที่ Claude ไม่มีมาในตัว — เช่น เปิดเว็บทำงานแทน, อ่าน Gmail, ดูปฏิทิน, คุยกับฐานข้อมูล ฯลฯ แต่ละตัวคือโปรแกรมเล็กๆ ที่รันในเครื่องคุณ แล้ว agent เรียกใช้ได้",
+      s1:"กด <b>＋ เพิ่ม</b> ตัวที่อยากได้ (ตัวที่ต้องใส่ token/path ให้แก้คำสั่งในช่องก่อน)",
+      s2:"ไปหน้า <b>ตั้งค่า → agent</b> แล้วติ๊ก tool ที่ขึ้นต้นว่า <code>mcp:&lt;ชื่อ&gt;</code> ให้ agent ที่ต้องการ",
+      s3:"เสร็จ! agent ตัวนั้นจะใช้ความสามารถใหม่ได้เลย",
+      warn:"⚠️ การเพิ่ม MCP = อนุญาตให้รันโปรแกรมนั้นในเครื่องคุณจริง เพิ่มเฉพาะตัวที่ไว้ใจ (ส่วนใหญ่เป็นของทางการ <code>@modelcontextprotocol/*</code> หรือ <code>@playwright/*</code>)",
+      installed:"✓ ติดตั้งแล้ว", available:"เพิ่มได้", add:"＋ เพิ่ม", remove:"เอาออก",
+      feat:"กดเพิ่มได้เลย",
+      customT:"เพิ่ม MCP เอง", customD:"มีคำสั่ง npx ของ MCP ตัวอื่นที่อยากใช้? ใส่ชื่อสั้นๆ + วางคำสั่ง แล้วกดเพิ่มได้เลย", custName:"ชื่อ เช่น myapi", custErr:"ใส่ชื่อ + คำสั่งให้ครบ",
+      footer:"มีอีกเยอะที่ <a href='https://github.com/modelcontextprotocol/servers' target='_blank'>modelcontextprotocol/servers</a> — ก๊อปคำสั่ง <code>npx …</code> ของตัวไหนมาวางในช่องด้านบนแล้วกดเพิ่มได้เลย · ถ้าตัวไหนเพิ่มแล้ว error ส่วนใหญ่คือชื่อ package เปลี่ยน — เช็คชื่อล่าสุดในลิงก์",
+      tFix:"แก้คำสั่งให้ครบก่อน (ยังมี <…> อยู่)", tAdded:n=>"✓ เพิ่มแล้ว — ไปติ๊ก tool 'mcp:"+n+"' ให้ agent ในหน้าตั้งค่า",
+      tAddErr:"เพิ่มไม่สำเร็จ", tRemoved:"เอาออกแล้ว",
+    },
+    en: {
+      whatTitle:"What is MCP?",
+      what:"It's how you give the AI team new abilities Claude doesn't have built in — open & drive a real browser, read Gmail, check a calendar, query a database, and more. Each one is a small program that runs on your machine and your agents can call.",
+      s1:"Press <b>＋ Add</b> on the one you want (for ones needing a token/path, edit the command first).",
+      s2:"Go to <b>Settings → agent</b> and tick the tool starting with <code>mcp:&lt;name&gt;</code> for that agent.",
+      s3:"Done! that agent can now use the new ability.",
+      warn:"⚠️ Adding an MCP lets that program run on your machine — only add ones you trust (most are official <code>@modelcontextprotocol/*</code> or <code>@playwright/*</code>).",
+      installed:"✓ Installed", available:"Available", add:"＋ Add", remove:"Remove",
+      feat:"one-click",
+      customT:"Add your own MCP", customD:"Got an npx command for another MCP? Give it a short name, paste the command, and add it.", custName:"name e.g. myapi", custErr:"Enter both a name and a command",
+      footer:"Many more at <a href='https://github.com/modelcontextprotocol/servers' target='_blank'>modelcontextprotocol/servers</a> — paste any <code>npx …</code> command into a box above and press Add · if one errors after adding, the package name has usually changed — check the latest in that link.",
+      tFix:"Finish the command first (still has <…>)", tAdded:n=>"✓ Added — tick the tool 'mcp:"+n+"' for an agent in Settings",
+      tAddErr:"Couldn't add", tRemoved:"Removed",
+    },
+  };
+  // Curated catalog (cmd editable). Each entry carries both languages.
+  const CATALOG = [
+    { name:"browser", ic:"🌐", feat:true, cmd:"npx -y @playwright/mcp@latest",
+      th:{t:"Browser (Playwright)", r:"คุมเบราว์เซอร์", d:"ให้ agent เปิดเว็บจริง คลิก กรอกฟอร์ม อ่านหน้า ทำงานบนเว็บแทนคุณ — กดเพิ่มได้เลย ไม่ต้องตั้งค่า"},
+      en:{t:"Browser (Playwright)", r:"controls a browser", d:"Let agents open a real browser, click, fill forms, read pages — do web tasks for you. One click, no setup."} },
+    { name:"memory", ic:"🧠", feat:true, cmd:"npx -y @modelcontextprotocol/server-memory",
+      th:{t:"Memory (ความจำถาวร)", r:"เก็บข้อมูลในเครื่อง", d:"ให้ agent จดจำข้อเท็จจริง/ความสัมพันธ์ข้ามครั้งได้ (knowledge graph)"},
+      en:{t:"Memory (persistent)", r:"stores data locally", d:"Let agents remember facts & relationships across sessions (a knowledge graph)."} },
+    { name:"thinking", ic:"💭", feat:true, cmd:"npx -y @modelcontextprotocol/server-sequential-thinking",
+      th:{t:"Sequential Thinking", r:"ไม่มีความเสี่ยง", d:"เครื่องมือช่วยให้ agent คิดเป็นขั้นตอนกับปัญหายากๆ ได้ดีขึ้น"},
+      en:{t:"Sequential Thinking", r:"no risk", d:"A tool that helps agents reason step-by-step through hard problems."} },
+    { name:"files", ic:"📁", edit:true, cmd:"npx -y @modelcontextprotocol/server-filesystem C:\\Users\\me\\Documents",
+      th:{t:"Filesystem", r:"อ่าน/เขียนไฟล์", d:"อ่าน/เขียนไฟล์ในโฟลเดอร์ที่กำหนด — แก้ path ท้ายคำสั่งก่อนเพิ่ม"},
+      en:{t:"Filesystem", r:"reads/writes files", d:"Read/write files in a chosen folder — edit the path at the end of the command first."} },
+    { name:"fetch", ic:"🔗", cmd:"npx -y @kazuph/mcp-fetch",
+      th:{t:"Web Fetch", r:"อ่านเว็บ", d:"ดึงเนื้อหาหน้าเว็บเป็นข้อความ/markdown ให้ agent อ่าน (เบากว่า browser)"},
+      en:{t:"Web Fetch", r:"reads web pages", d:"Pull a web page as text/markdown for agents to read (lighter than a full browser)."} },
+    { name:"github", ic:"🐙", edit:true, cmd:"npx -y @modelcontextprotocol/server-github",
+      th:{t:"GitHub", r:"ต้องมี token", d:"จัดการ repo / issue / PR — ตั้งค่า personal access token ก่อน"},
+      en:{t:"GitHub", r:"needs a token", d:"Manage repos / issues / PRs — set up a personal access token first."} },
+    { name:"google", ic:"📧", edit:true, cmd:"npx -y @google-workspace/mcp-server",
+      th:{t:"Google Workspace", r:"ต้องตั้ง OAuth", d:"Gmail / Calendar / Drive — ต้องตั้ง Google OAuth credentials ก่อน"},
+      en:{t:"Google Workspace", r:"needs OAuth", d:"Gmail / Calendar / Drive — set up Google OAuth credentials first."} },
+    { name:"gmaps", ic:"🗺", edit:true, cmd:"npx -y @modelcontextprotocol/server-google-maps",
+      th:{t:"Google Maps", r:"ต้องมี API key", d:"ค้นสถานที่ / เส้นทาง / รายละเอียดธุรกิจ — ต้องมี Google Maps API key"},
+      en:{t:"Google Maps", r:"needs API key", d:"Find places / routes / business details — needs a Google Maps API key."} },
+    { name:"bravesearch", ic:"🔎", edit:true, cmd:"npx -y @modelcontextprotocol/server-brave-search",
+      th:{t:"Brave Search", r:"ต้องมี API key", d:"ค้นเว็บผ่าน Brave Search API (ทางเลือกของ WebSearch)"},
+      en:{t:"Brave Search", r:"needs API key", d:"Search the web via the Brave Search API (an alternative to WebSearch)."} },
+    { name:"postgres", ic:"🐘", edit:true, cmd:"npx -y @modelcontextprotocol/server-postgres postgresql://user:pass@localhost/db",
+      th:{t:"PostgreSQL", r:"ฐานข้อมูล (อ่าน)", d:"ให้ agent query ฐานข้อมูล Postgres — แก้ connection string ก่อนเพิ่ม"},
+      en:{t:"PostgreSQL", r:"database (read)", d:"Let agents query a Postgres database — edit the connection string first."} },
+    { name:"slack", ic:"💬", edit:true, cmd:"npx -y @modelcontextprotocol/server-slack",
+      th:{t:"Slack", r:"ต้องมี token", d:"อ่าน/ส่งข้อความ Slack — ต้องมี bot token"},
+      en:{t:"Slack", r:"needs a token", d:"Read/send Slack messages — needs a bot token."} },
+    { name:"notion", ic:"📓", edit:true, cmd:"npx -y @notionhq/notion-mcp-server",
+      th:{t:"Notion", r:"ต้องมี token", d:"อ่าน/เขียนหน้าและฐานข้อมูลใน Notion — ต้องมี integration token"},
+      en:{t:"Notion", r:"needs a token", d:"Read/write Notion pages & databases — needs an integration token."} },
+    { name:"puppeteer", ic:"🕹", cmd:"npx -y @modelcontextprotocol/server-puppeteer",
+      th:{t:"Puppeteer (เบราว์เซอร์)", r:"คุมเบราว์เซอร์", d:"ขับเบราว์เซอร์ Chrome อัตโนมัติ (ทางเลือกของ Playwright)"},
+      en:{t:"Puppeteer (browser)", r:"controls a browser", d:"Drive a headless Chrome browser (an alternative to Playwright)."} },
+    { name:"sqlite", ic:"🗄", edit:true, cmd:"npx -y mcp-server-sqlite-npx C:\\path\\to\\db.sqlite",
+      th:{t:"SQLite", r:"ฐานข้อมูล", d:"ให้ agent query ไฟล์ฐานข้อมูล SQLite — แก้ path ไฟล์ก่อนเพิ่ม"},
+      en:{t:"SQLite", r:"database", d:"Let agents query a SQLite database file — edit the file path first."} },
+    { name:"sentry", ic:"🐞", edit:true, cmd:"npx -y @sentry/mcp-server",
+      th:{t:"Sentry", r:"ต้องมี token", d:"ดู/วิเคราะห์ error และ issue ใน Sentry — ต้องมี auth token"},
+      en:{t:"Sentry", r:"needs a token", d:"Inspect & triage errors/issues in Sentry — needs an auth token."} },
+  ];
+  let installed = {};
+
+  function paintStatic() {
+    const u = UI[L];
+    document.getElementById("intro").innerHTML =
+      `<b>${u.whatTitle}</b> ${u.what}<ol><li>${u.s1}</li><li>${u.s2}</li><li>${u.s3}</li></ol><div class="warn">${u.warn}</div>`;
+    document.getElementById("custom").innerHTML =
+      `<div class="card" style="border-style:dashed">
+         <div class="top"><span class="ic">➕</span><h3>${u.customT}</h3></div>
+         <p>${u.customD}</p>
+         <div class="row">
+           <input class="cmd" id="custName" placeholder="${u.custName}" style="flex:0 0 150px">
+           <input class="cmd" id="custCmd" placeholder="npx -y @org/some-mcp">
+           <button class="add" onclick="addCustom()">${u.add}</button>
+         </div></div>`;
+    document.getElementById("footer").innerHTML = u.footer;
+  }
+  function addCustom() {
+    const name = (document.getElementById("custName").value||"").trim();
+    const command = (document.getElementById("custCmd").value||"").trim();
+    if (!name || !command) return toast(UI[L].custErr);
+    const slug = name.toLowerCase().replace(/[^a-z0-9_-]/g,"-").slice(0,40);
+    fetch("/registry/mcp", { method:"POST", headers:{"content-type":"application/json"}, body: JSON.stringify({ name, command }) })
+      .then(r=>r.ok?toast(UI[L].tAdded(slug)):toast(UI[L].tAddErr))
+      .then(()=>{ refresh(); }).catch(()=>toast(UI[L].tAddErr));
+  }
+  // For languages beyond th/en, build UI[lang] + per-item catalog[lang] by
+  // translating the Thai source via the daemon (function/template fields keep
+  // English). Gaps fill in the background and re-render.
+  async function buildLang(lang) {
+    WL = await WinLang.build(lang);
+    const thai = [];
+    for (const k in UI.th) if (typeof UI.th[k] === "string") thai.push(UI.th[k]);
+    for (const c of CATALOG) for (const k in c.th) thai.push(c.th[k]);
+    const apply = () => {
+      UI[lang] = {};
+      for (const k in UI.th) UI[lang][k] = (typeof UI.th[k] === "function")
+        ? UI.en[k] : (WL.map[UI.th[k]] || UI.en[k] || UI.th[k]);
+      for (const c of CATALOG) { c[lang] = {}; for (const k in c.th)
+        c[lang][k] = WL.map[c.th[k]] || (c.en && c.en[k]) || c.th[k]; }
+    };
+    apply();
+    WL.ensure(thai, () => { apply(); paintStatic(); render(); });
+  }
+  function refresh() {
+    fetch("/registry").then(r=>r.json()).then(async reg=>{
+      installed = reg.mcp || reg.mcpServers || {};
+      const lang = reg.lang || "th";
+      if (lang !== "th") L = lang;
+      if (lang !== "th" && lang !== "en" && window.WinLang) await buildLang(lang);
+      paintStatic(); render();
+    }).catch(()=>{ paintStatic(); render(); });
+  }
+  function cardHTML(c, i) {
+    const on = !!installed[c.name], t = c[L] || c.th, u = UI[L];
+    return `<div class="card${on?" on":""}">
+      <div class="top"><span class="ic">${c.ic}</span><h3>${t.t}</h3>
+        ${on?`<span class="pill on">${u.installed}</span>`:(c.feat?`<span class="pill feat">${u.feat}</span>`:'')}
+        <span class="pill risk">${t.r}</span></div>
+      <p>${t.d}</p>
+      <div class="row">
+        <input class="cmd" id="cmd${i}" value="${c.cmd.replace(/"/g,'&quot;')}"${on?' disabled':''}>
+        ${on ? `<button class="rm" onclick="rm('${c.name}')">${u.remove}</button>`
+             : `<button class="add" onclick="add('${c.name}',${i})">${u.add}</button>`}
+      </div></div>`;
+  }
+  function render() {
+    const u = UI[L];
+    const on = CATALOG.map((c,i)=>({c,i})).filter(x=>installed[x.c.name]);
+    const off = CATALOG.map((c,i)=>({c,i})).filter(x=>!installed[x.c.name]);
+    document.getElementById("installed").innerHTML =
+      on.length ? `<div class="sec">${u.installed} (${on.length})</div>` + on.map(x=>cardHTML(x.c,x.i)).join("") : "";
+    document.getElementById("available").innerHTML =
+      `<div class="sec">${u.available} (${off.length})</div>` + off.map(x=>cardHTML(x.c,x.i)).join("");
+  }
+  function add(name, i) {
+    const command = document.getElementById("cmd"+i).value.trim();
+    if (!command || command.includes("<")) return toast(UI[L].tFix);
+    fetch("/registry/mcp", { method:"POST", headers:{"content-type":"application/json"}, body: JSON.stringify({ name, command }) })
+      .then(r=>r.ok?toast(UI[L].tAdded(name)):toast(UI[L].tAddErr)).then(refresh).catch(()=>toast(UI[L].tAddErr));
+  }
+  function rm(name) {
+    fetch("/registry/mcp", { method:"POST", headers:{"content-type":"application/json"}, body: JSON.stringify({ name, remove:true }) })
+      .then(()=>{ toast(UI[L].tRemoved); refresh(); });
+  }
+  let tid;
+  function toast(t){ const e=document.getElementById("toast"); e.textContent=t; e.classList.add("show"); clearTimeout(tid); tid=setTimeout(()=>e.classList.remove("show"),2800); }
+  paintStatic(); refresh();
+</script>
+</body>
+</html>

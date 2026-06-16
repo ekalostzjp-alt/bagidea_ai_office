@@ -1,0 +1,130 @@
+# Godot editor/import cache
+godot/.godot/
+
+# Rust build artifacts
+shell/target/
+shell/macos/wallpaper_shim/target/
+
+# macOS: built wallpaper shim (rebuilt by build-mac.sh) and the locally
+# downloaded Godot runtime (not ours to redistribute — see README "Run on macOS")
+shell/macos/*.dylib
+godot/bin-mac/
+
+# Personal Claude Code permission overrides (per-machine)
+.claude/settings.local.json
+
+# Runtime artifacts
+daemon/journal.jsonl
+daemon/registry.json
+daemon/sessions.json
+daemon/map_bg.png
+daemon/mcp_*.json
+daemon/jobs.json
+daemon/notes.json
+daemon/calendar.json
+daemon/projects.json
+daemon/monitor.txt
+daemon/monitors.txt
+daemon/proposals.json
+
+# Adapter session workspace (keep only the permission-hook config)
+workspace/*
+!workspace/.claude/
+workspace/.claude/*
+!workspace/.claude/settings.json
+
+# Free art packs (free-license / CC0 — see README "Art assets") now ship IN the
+# repo, so a fresh install and `bagidea update` carry the full visuals + sounds.
+_assets_tmp/
+*.zip
+
+# Third-party asset archives
+*.rar
+*.7z
+# branded Godot runtime (172MB, built by copying Godot + rcedit --set-icon)
+godot/bin/
+tools/rcedit-x64.exe
+
+_shots/
+shots/
+# dev render harnesses + preview captures (grid rewrite)
+godot/_*.gd
+_grid_*.png
+_*.png
+
+# Working art files at repo root (untracked until the owner decides)
+CharacterBase*
+
+# Promo drafts + working images at repo root (owner's social material)
+THAI.md
+ENGLISH.md
+/Warrix.png
+/preview.jpg
+
+# The office's built-in plugins ship in this repo so a fresh install has them
+# all. Anything else dropped into plugins/ at runtime stays untracked.
+plugins/*
+!plugins/music
+!plugins/calculator
+!plugins/agent-status
+!plugins/bagidea-monitoring
+!plugins/integration-hub
+# ...and even within the shipped plugins, runtime data + user media stay out
+# (integration-hub keeps its encrypted credentials under data/ — never commit).
+plugins/*/data/
+plugins/music/tracks/
+daemon/layout.json
+daemon/i18n/
+dist/
+daemon/presets.json
+daemon/assets.json
+daemon/stats.json
+daemon/proposals.json
+
+# daemon stdout/stderr log (runtime)
+daemon/daemon.log
+
+# Runtime / local-only artifacts + secrets — NEVER commit (review gate v0.7.10).
+# Secrets:
+daemon/.env.db
+# Installed deps (rebuilt by `npm install`):
+daemon/node_modules/
+# Process + deploy runtime:
+daemon/daemon.pid
+daemon/deploy-restart.log
+# Brain / retrieval caches:
+daemon/brain-cache/
+# Persisted run + token + snapshot state:
+daemon/runs.json
+daemon/tokens.json
+daemon/snapshots.json
+daemon/snapshots/
+# Misc generated office state:
+daemon/npc-proposals.json
+daemon/usage-processes.json
+daemon/work-summary.json
+daemon/voice-lines.json
+daemon/review-gate.json
+# Local source/config backups (snapshot .bak files):
+daemon/*.bak
+daemon/**/*.bak
+*.pre-*.bak
+# Suffixed backups (.bak-precharlock, .bak-2026…) + frozen server candidates:
+daemon/*.bak-*
+daemon/**/*.bak-*
+daemon/server.frozen-candidate.js
+daemon/registry.lock-staged.json
+# Per-machine local config (never shared):
+daemon/model-settings.json
+shell/overlay-pos.cfg
+
+# Codex / e2e review-gate runtime scratch (regenerated each run — never commit):
+.codex/
+.e2e-gate/
+.claude/PROJECT_BRAIN.md
+
+# Test probe / scratch harnesses (underscore-prefixed — NOT part of the suite):
+daemon/tests/_*.js
+
+# Stray MCP config dumps from botched path redirects (root-level garbage):
+/*mcp_test_real.json

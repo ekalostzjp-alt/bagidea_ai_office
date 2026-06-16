@@ -1,0 +1,15 @@
+{
+  "id": "agent-status",
+  "name": "📊 Agent Status",
+  "version": "1.0.0",
+  "description": "สถานะ agent ครบจบในที่เดียว — CPU/หน่วยความจำ/คิว/working-idle/timeout สด + claim งานกัน task collision (จองชน=เข้าคิว FIFO) + แถบเตือนเมื่อชนโปรเจค/ไฟล์เดียวกัน",
+  "panel": "panel.html",
+  "commands": [
+    { "name": "status", "args": "", "desc": "payload รวมครบ: agents[](cpu/mem/state/queue/timedOut/project/task) + claims + queue + warnings + ts" },
+    { "name": "board", "args": "", "desc": "บอร์ดกัน collision: live agents + claims/queue/warnings ปัจจุบัน" },
+    { "name": "claim", "args": "{\"agentId\":\"...\",\"project\":\"...\",\"files\":[\"rel/path\"],\"reason\":\"...\"}", "desc": "จองงานก่อนลงมือ (ชน=เข้าคิวอัตโนมัติ)" },
+    { "name": "release", "args": "{\"agentId\":\"...\",\"claimId\":\"...\"}", "desc": "ปลด claim + เลื่อนคิวหัวแถวขึ้น (ระบุ claimId หรือ project)" }
+  ],
+  "needsKeys": [],
+  "core": true
+}

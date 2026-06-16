@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plugins Hub — BagIdea Office</title>
+<style>
+  :root { --bg:#0a111d; --card:#0e1626; --line:rgba(255,255,255,.10); --accent:#5ec8ff; --text:#e8eef6; --dim:#90a0b6; }
+  * { box-sizing:border-box; }
+  html,body { margin:0; min-height:100%; background:var(--bg); color:var(--text);
+    font:13px/1.55 -apple-system,Segoe UI,Roboto,"Noto Sans Thai",sans-serif; }
+  ::-webkit-scrollbar { width:8px; } ::-webkit-scrollbar-thumb { background:rgba(94,200,255,.35); border-radius:8px; }
+  .wrap { max-width:780px; margin:0 auto; padding:18px 18px 50px; }
+  h1 { font-size:19px; margin:4px 0 2px; }
+  .intro { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:13px 15px; margin:10px 0 16px; font-size:12.7px; color:#cdd9e8; }
+  .intro b { color:var(--text); } .intro ol { margin:8px 0 0; padding-left:20px; } .intro li { margin:3px 0; }
+  .intro .warn { color:#ffcf8a; margin-top:9px; }
+  .intro a { color:var(--accent); }
+  .sec { font-size:12px; color:var(--dim); margin:18px 0 8px; letter-spacing:.4px; text-transform:uppercase; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:13px 15px; margin-bottom:11px; }
+  .card.on { border-color:rgba(103,232,160,.4); }
+  .card .top { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .card h3 { margin:0; font-size:15px; flex:1; min-width:120px; }
+  .by { font-size:11px; color:var(--dim); }
+  .pill { font-size:10.5px; padding:2px 8px; border-radius:999px; border:1px solid var(--line); color:var(--dim); white-space:nowrap; }
+  .pill.on { color:#67e8a0; border-color:rgba(103,232,160,.5); }
+  .pill.official { color:var(--accent); border-color:rgba(94,200,255,.5); }
+  .pill.tag { color:#b9a7ff; border-color:rgba(150,120,255,.4); }
+  .card p { color:#c2cddc; margin:8px 0; font-size:12.5px; }
+  .row { display:flex; gap:8px; align-items:center; margin-top:10px; flex-wrap:wrap; }
+  .row .sp { flex:1; }
+  button { background:#13203a; color:var(--text); border:1px solid var(--line); border-radius:8px;
+    padding:7px 14px; cursor:pointer; font-weight:600; font-size:12px; white-space:nowrap; }
+  button:hover { border-color:var(--accent); color:var(--accent); }
+  button.add { background:#0e4d8c; border-color:rgba(94,200,255,.5); }
+  button.add:hover { background:#1466b3; color:#fff; }
+  button.rm:hover { border-color:#ff7b7b; color:#ff7b7b; }
+  button.ghost { background:transparent; }
+  button:disabled { opacity:.55; cursor:default; }
+  a.repo { color:var(--accent); font-size:11.5px; text-decoration:none; align-self:center; }
+  a.repo:hover { text-decoration:underline; }
+  #toast { position:fixed; bottom:14px; left:50%; transform:translateX(-50%); background:#13203a;
+    border:1px solid var(--accent); border-radius:10px; padding:8px 16px; opacity:0; transition:opacity .2s; max-width:90%; }
+  #toast.show { opacity:1; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🧩 Plugins Hub</h1>
+  <div id="intent"></div>
+  <div class="intro" id="intro"></div>
+  <div id="installed"></div>
+  <div id="available"></div>
+  <p id="footer" style="font-size:11.5px;color:var(--dim);margin-top:18px"></p>
+</div>
+<div id="toast"></div>
+<script src="/winlang.js"></script>
+<script>
+  let L = "th";
+  let WL = null;  // WinLang instance for non-English languages (Thai → lang via /i18n)
+  const UI = {
+    th: {
+      whatTitle:"Plugin คืออะไร?",
+      what:"คือส่วนขยายของออฟฟิศที่ใครก็เขียนได้ — เพิ่มแผงเครื่องมือ, คำสั่งให้ agents สั่งงาน, หรือความสามารถใหม่ๆ แต่ละตัวคือ GitHub repo ที่กดติดตั้งทีเดียวก็ใช้ได้เลย",
+      s1:"กด <b>⬇ ติดตั้ง</b> ตัวที่อยากได้ — ระบบจะ clone จาก GitHub ลงเครื่องแล้วโหลดให้อัตโนมัติ",
+      s2:"เปิดแผงของ plugin ได้จากเมนู <b>🧩 Plugins</b> · agents สั่งงาน plugin ที่มีคำสั่งได้",
+      s3:"อยากให้ plugin ของคุณอยู่ใน hub นี้? เผยแพร่เป็น GitHub repo แล้วเปิด PR เพิ่มลง catalog — ดู <a id='lnkSubmit' href='#' target='_blank'>วิธี submit</a>",
+      warn:"⚠️ การติดตั้ง plugin = รันโค้ดของคนอื่นบนเครื่องคุณจริง ติดตั้งเฉพาะตัวที่ไว้ใจ · ตัวที่มีป้าย ‘ทางการ’ ดูแลโดยทีม BagIdea",
+      installed:"✓ ติดตั้งแล้ว", available:"ติดตั้งได้", add:"⬇ ติดตั้ง", remove:"ถอนการติดตั้ง",
+      official:"ทางการ", copy:"📋 คัดลอกลิงก์", repo:"ดูซอร์ส ↗", core:"🔒 plugin หลัก",
+      footer:"แคตตาล็อกนี้คัดมาเป็นรายตัว (PR ผ่านการตรวจก่อน) · อยากติดตั้งตัวที่ไม่ได้อยู่ในนี้? วางลิงก์ GitHub ในหน้า 🧩 Plugins ของออฟฟิศได้เลย",
+      none:"ยังไม่มี plugin ในแคตตาล็อก",
+      tInstalling:"📦 กำลังติดตั้ง…", tInstalled:"✅ ติดตั้งแล้ว", tInstallErr:"ติดตั้งไม่สำเร็จ",
+      tRemoved:"ถอนการติดตั้งแล้ว", tCopied:"📋 คัดลอกลิงก์แล้ว — วางในหน้า Plugins ของออฟฟิศได้เลย",
+      intentTitle:"ติดตั้ง plugin นี้?", intentBody:"คุณกดติดตั้งจากหน้าเว็บ — plugin รันโค้ดจริงบนเครื่องคุณ ติดตั้งเฉพาะตัวที่ไว้ใจ", intentYes:"⬇ ติดตั้ง", intentNo:"ยกเลิก",
+    },
+    en: {
+      whatTitle:"What is a plugin?",
+      what:"An office extension anyone can write — it can add a tool panel, commands your agents can run, or whole new abilities. Each one is a GitHub repo you install with a single click.",
+      s1:"Press <b>⬇ Install</b> on the one you want — it clones from GitHub and loads automatically.",
+      s2:"Open a plugin's panel from the <b>🧩 Plugins</b> menu · agents can drive any plugin that exposes commands.",
+      s3:"Want your plugin in this hub? Publish it as a GitHub repo and open a PR adding it to the catalog — see <a id='lnkSubmit' href='#' target='_blank'>how to submit</a>.",
+      warn:"⚠️ Installing a plugin runs someone else's code on your machine — only install ones you trust. Entries marked ‘Official’ are maintained by the BagIdea team.",
+      installed:"✓ Installed", available:"Available", add:"⬇ Install", remove:"Uninstall",
+      official:"Official", copy:"📋 Copy link", repo:"View source ↗", core:"🔒 Core plugin",
+      footer:"This catalog is hand-curated (every PR is reviewed) · Want one that isn't listed? Paste its GitHub link in the office's 🧩 Plugins panel.",
+      none:"No plugins in the catalog yet",
+      tInstalling:"📦 Installing…", tInstalled:"✅ Installed", tInstallErr:"Install failed",
+      tRemoved:"Uninstalled", tCopied:"📋 Link copied — paste it in the office Plugins panel.",
+      intentTitle:"Install this plugin?", intentBody:"You requested this from the web — a plugin runs real code on your machine. Only install ones you trust.", intentYes:"⬇ Install", intentNo:"Cancel",
+    },
+  };
+  const SUBMIT_URL = "https://github.com/bagidea/bagidea-office/blob/main/docs/guide/plugin-hub.md";
+  let catalog = [];
+  let installed = {};   // id -> { core }
+  let busy = {};
+
+  function intro() {
+    const u = UI[L];
+    document.getElementById("intro").innerHTML =
+      `<b>${u.whatTitle}</b> ${u.what}<ol><li>${u.s1}</li><li>${u.s2}</li><li>${u.s3}</li></ol><div class="warn">${u.warn}</div>`;
+    document.getElementById("footer").innerHTML = u.footer;
+    const lk = document.getElementById("lnkSubmit"); if (lk) lk.href = SUBMIT_URL;
+  }
+  function esc(s) { return String(s || "").replace(/[<>&"]/g, (c) => ({ "<":"&lt;", ">":"&gt;", "&":"&amp;", '"':"&quot;" }[c])); }
+
+  function cardHTML(p) {
+    const u = UI[L], on = !!installed[p.id], core = on && installed[p.id].core;
+    const desc = (p[L] && p[L].desc) || (p.th && p.th.desc) || (p.en && p.en.desc) || "";
+    const tags = (p.tags || []).filter((t) => t !== "official")
+      .map((t) => `<span class="pill tag">${esc(t)}</span>`).join("");
+    return `<div class="card${on?" on":""}">
+      <div class="top">
+        <h3>${esc(p.name)}</h3>
+        ${on?`<span class="pill on">${u.installed}</span>`:""}
+        ${p.official?`<span class="pill official">${u.official}</span>`:""}
+        ${tags}
+      </div>
+      <div class="by">${p.author?("@"+esc(p.author)):""}</div>
+      <p>${esc(desc)}</p>
+      <div class="row">
+        ${on
+          ? (core ? `<span class="pill">${u.core}</span>`
+                  : `<button class="rm" ${busy[p.id]?"disabled":""} onclick="removeIt('${esc(p.id)}')">${u.remove}</button>`)
+          : `<button class="add" ${busy[p.id]?"disabled":""} onclick="install('${esc(p.id)}')">${busy[p.id]?u.tInstalling:u.add}</button>`}
+        <button class="ghost" onclick="copyLink('${esc(p.repo)}')">${u.copy}</button>
+        <span class="sp"></span>
+        <a class="repo" href="${esc(p.repo)}" target="_blank">${u.repo}</a>
+      </div></div>`;
+  }
+  function render() {
+    const u = UI[L];
+    if (!catalog.length) {
+      document.getElementById("installed").innerHTML = "";
+      document.getElementById("available").innerHTML = `<p style="color:var(--dim)">${u.none}</p>`;
+      return;
+    }
+    const on = catalog.filter((p) => installed[p.id]);
+    const off = catalog.filter((p) => !installed[p.id]);
+    document.getElementById("installed").innerHTML =
+      on.length ? `<div class="sec">${u.installed} (${on.length})</div>` + on.map(cardHTML).join("") : "";
+    document.getElementById("available").innerHTML =
+      `<div class="sec">${u.available} (${off.length})</div>` + (off.length ? off.map(cardHTML).join("") : `<p style="color:var(--dim)">—</p>`);
+  }
+  // Languages beyond th/en: translate the UI.th strings + each plugin's Thai
+  // description via the daemon; gaps fill in the background and re-render.
+  async function buildLang(lang) {
+    WL = await WinLang.build(lang);
+    const apply = () => {
+      UI[lang] = {};
+      for (const k in UI.th) UI[lang][k] = WL.map[UI.th[k]] || UI.en[k] || UI.th[k];
+      for (const p of catalog) if (p.th && p.th.desc)
+        p[lang] = { desc: WL.map[p.th.desc] || (p.en && p.en.desc) || p.th.desc };
+    };
+    apply();
+    const thai = [];
+    for (const k in UI.th) thai.push(UI.th[k]);
+    for (const p of catalog) if (p.th && p.th.desc) thai.push(p.th.desc);
+    WL.ensure(thai, () => { apply(); intro(); render(); intentBanner(); });
+  }
+  function refresh() {
+    Promise.all([
+      fetch("/registry").then((r) => r.json()).catch(() => ({})),
+      fetch("/plugins").then((r) => r.json()).catch(() => ({ plugins: [] })),
+      fetch("/plugins/catalog").then((r) => r.json()).catch(() => ({ plugins: [] })),
+    ]).then(async ([reg, plg, cat]) => {
+      const lang = reg.lang || "th";
+      if (lang !== "th") L = lang;
+      installed = {};
+      for (const p of (plg.plugins || [])) installed[p.id] = { core: !!p.core };
+      catalog = (cat.plugins || []).filter((p) => p && p.id && p.repo);
+      if (lang !== "th" && lang !== "en" && window.WinLang) await buildLang(lang);
+      intro(); render(); intentBanner();
+    });
+  }
+  function install(id) {
+    const p = catalog.find((x) => x.id === id); if (!p) return;
+    busy[id] = true; render(); toast(UI[L].tInstalling);
+    fetch("/plugins/install", {
+      method: "POST", headers: { "content-type": "application/json", "x-bagidea-ui": "1" },
+      body: JSON.stringify({ url: p.repo }),
+    }).then(async (r) => {
+      busy[id] = false;
+      if (r.ok) { toast(UI[L].tInstalled); refresh(); }
+      else { toast(UI[L].tInstallErr + " — " + (await r.text()).slice(0, 90)); render(); }
+    }).catch(() => { busy[id] = false; toast(UI[L].tInstallErr); render(); });
+  }
+  function removeIt(id) {
+    busy[id] = true; render();
+    fetch("/plugins/remove", {
+      method: "POST", headers: { "content-type": "application/json", "x-bagidea-ui": "1" },
+      body: JSON.stringify({ id }),
+    }).then(() => { busy[id] = false; toast(UI[L].tRemoved); refresh(); })
+      .catch(() => { busy[id] = false; refresh(); });
+  }
+  function copyLink(url) {
+    (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject())
+      .then(() => toast(UI[L].tCopied))
+      .catch(() => { prompt(UI[L].copy, url); });
+  }
+  // A bagidea:// "install" deep link arrives as ?install=<repo>. Show a confirm
+  // banner up top — the user must approve before any code is cloned & run.
+  function intentBanner() {
+    const m = location.search.match(/[?&]install=([^&]+)/);
+    const box = document.getElementById("intent");
+    if (!m) { box.innerHTML = ""; return; }
+    let repo = ""; try { repo = decodeURIComponent(m[1]); } catch (e) { repo = m[1]; }
+    if (!/^https:\/\/[\w.-]+\/[\w.\-/]+$/.test(repo)) { box.innerHTML = ""; return; }
+    const u = UI[L];
+    box.innerHTML =
+      `<div class="card" style="border-color:rgba(94,200,255,.5)">
+         <div class="top"><h3>${u.intentTitle}</h3></div>
+         <p style="word-break:break-all"><b>${esc(repo)}</b></p>
+         <p style="color:#e6b873">${u.intentBody}</p>
+         <div class="row">
+           <button class="add" id="intentYes">${u.intentYes}</button>
+           <button class="ghost" id="intentNo">${u.intentNo}</button>
+         </div></div>`;
+    document.getElementById("intentYes").onclick = () => { box.innerHTML = ""; installUrl(repo); };
+    document.getElementById("intentNo").onclick = () => { box.innerHTML = ""; history.replaceState(null, "", location.pathname); };
+  }
+  function installUrl(repo) {
+    toast(UI[L].tInstalling);
+    fetch("/plugins/install", {
+      method: "POST", headers: { "content-type": "application/json", "x-bagidea-ui": "1" },
+      body: JSON.stringify({ url: repo }),
+    }).then(async (r) => {
+      if (r.ok) { toast(UI[L].tInstalled); history.replaceState(null, "", location.pathname); refresh(); }
+      else toast(UI[L].tInstallErr + " — " + (await r.text()).slice(0, 90));
+    }).catch(() => toast(UI[L].tInstallErr));
+  }
+  let tid;
+  function toast(t){ const e=document.getElementById("toast"); e.textContent=t; e.classList.add("show"); clearTimeout(tid); tid=setTimeout(()=>e.classList.remove("show"),3000); }
+  intro(); refresh();
+</script>
+</body>
+</html>

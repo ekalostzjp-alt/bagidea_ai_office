@@ -1,0 +1,777 @@
+<!doctype html>
+<!--
+  🔌 Integration Hub — panel (frontend by น้องไวท์).
+  Single-file panel, wired to แบล็ค's LIVE contract-aligned backend
+  (CONTRACT.md = source of truth). Everything goes through ONE channel:
+      POST /plugin/integration-hub/cmd  { cmd:"<name>", args:{...} }
+
+  Verified-live command map (curl round-trip):
+    overview            → {ok,now,credentials:[masked],connections:[],workflows:[]}  (one-shot load)
+    cred.list           → {ok,credentials:[publicCred]}
+    cred.set  {id?,label,type?,value?,hint?,description?,project?} → {ok,credential}   (omit value on edit = keep)
+    cred.remove {id}    → {ok,removed:0|1}
+    conn-list           → {ok,connections:[conn]}
+    conn-add  {id?,label,check?} → {ok,connection}
+    conn-remove {id}    → {ok,removed}
+    status {id} / status.all  → connCheck (PINGS) → {ok,connections:[probed]}
+    wf.list             → {ok,workflows:[wf]}
+    wf.set  {id?,label,trigger?} → {ok,workflow}
+    wf.remove {id}      → {ok,removed}
+    wf.trigger {id}     → {ok,workflow}  (workflow.lastRun updated; fail-open → ok:true even on failed run)
+
+  Shapes:
+    publicCred {id,label,type,hint,description,project,createdAt,updatedAt,hasValue,masked}
+               type ∈ api_key|bearer|basic|oauth|webhook|secret ; masked="••••••" (fixed, no hint)
+               project = destination project id ("" = unbound) ; description = "ใช้ทำอะไร" (≤500)
+    conn       {id,label,status,lastChecked,detail,check}   status ∈ ok|down|unknown
+               check {url,method:GET|HEAD,expectStatus,credentialId,timeoutMs} | null
+    wf         {id,label,trigger,lastRun}
+               trigger {kind:webhook|command|connection-check,target,method,credentialId} | null
+               lastRun {at,status:never|ok|failed,detail}
+
+  DEGRADE-SAFE: cmd() never throws — 404 (plugin unmounted) / network error flips
+  the header pill to "offline" and falls back to MOCK; the panel never blanks.
+-->
+<html lang="th"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>🔌 Integration Hub</title>
+<style>
+  :root {
+    --bg:#0c1322; --fg:#dbe7ff; --dim:#7e8db0; --accent:#5ec8ff; --card:#13203a;
+    --line:rgba(255,255,255,0.08); --ok:#46d29a; --down:#ff6b6b; --unknown:#8893b3;
+    --warn:#ffce6b;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; font-family:'Segoe UI','Noto Sans Thai',sans-serif; }
+  html { scrollbar-width: thin; scrollbar-color: rgba(110,180,255,.3) transparent; }
+  ::-webkit-scrollbar { width: 9px; height: 9px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(110,180,255,.22); border-radius: 6px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(110,180,255,.45); }
+  html, body { height:100%; }
+  body { background:var(--bg); color:var(--fg); padding:14px; user-select:none;
+    display:flex; flex-direction:column; gap:0; overflow:hidden; }
+
+  .head { display:flex; align-items:center; gap:10px; flex:0 0 auto; margin-bottom:10px; }
+  .head h1 { font-size:15px; font-weight:700; letter-spacing:.2px; }
+  .head .spacer { flex:1; }
+  .pill { display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:999px;
+    border:1px solid var(--line); font-size:10.5px; color:var(--dim); background:transparent; cursor:default; }
+  .pill .dot { width:8px; height:8px; border-radius:50%; background:var(--unknown); }
+  .pill.online { color:var(--ok); border-color:rgba(70,210,154,.4); }
+  .pill.online .dot { background:var(--ok); box-shadow:0 0 7px rgba(70,210,154,.7); }
+  .pill.offline { color:var(--warn); border-color:rgba(255,206,107,.4); }
+  .pill.offline .dot { background:var(--warn); }
+
+  .tabs { display:flex; gap:4px; flex:0 0 auto; margin-bottom:12px;
+    background:rgba(255,255,255,.03); padding:4px; border-radius:11px; border:1px solid var(--line); }
+  .tab { flex:1; text-align:center; padding:8px 6px; border-radius:8px; cursor:pointer;
+    font-size:11.5px; color:var(--dim); border:1px solid transparent; transition:.12s; }
+  .tab:hover { color:var(--fg); }
+  .tab.on { color:var(--accent); background:rgba(94,200,255,.1); border-color:rgba(94,200,255,.35); }
+  .tab .n { display:inline-block; min-width:16px; margin-left:5px; font-size:9.5px; color:var(--dim);
+    background:rgba(255,255,255,.07); border-radius:999px; padding:1px 5px; }
+  .tab.on .n { color:var(--accent); }
+
+  .zone { flex:1 1 auto; min-height:0; overflow-y:auto; display:none; flex-direction:column; gap:9px; }
+  .zone.on { display:flex; }
+  .zone-bar { display:flex; align-items:center; gap:8px; flex:0 0 auto; }
+  .zone-bar .ttl { font-size:11px; color:var(--dim); }
+  .zone-bar .spacer { flex:1; }
+
+  .btn { padding:6px 11px; border-radius:8px; cursor:pointer; font-size:11px; color:var(--fg);
+    background:rgba(94,200,255,.1); border:1px solid rgba(94,200,255,.35); transition:.12s; }
+  .btn:hover { border-color:var(--accent); }
+  .btn.ghost { background:transparent; border-color:var(--line); color:var(--dim); }
+  .btn.ghost:hover { color:var(--fg); border-color:var(--accent); }
+  .btn.sm { padding:4px 9px; font-size:10.5px; }
+  .btn:disabled { opacity:.5; cursor:default; border-color:var(--line); }
+
+  .card { background:linear-gradient(160deg,var(--card),var(--bg)); border:1px solid var(--line);
+    border-radius:11px; padding:11px 12px; flex:0 0 auto; }
+  .card .top { display:flex; align-items:center; gap:9px; }
+  .card .ico { width:30px; height:30px; border-radius:8px; flex:0 0 auto; display:grid; place-items:center;
+    font-size:15px; background:rgba(94,200,255,.08); border:1px solid var(--line); }
+  .card .nm { font-size:12.5px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .card .acts { display:flex; gap:5px; opacity:.55; transition:.12s; }
+  .card:hover .acts { opacity:1; }
+  .grow { flex:1; min-width:0; }
+  .iconbtn { width:26px; height:26px; border-radius:7px; display:grid; place-items:center; cursor:pointer;
+    font-size:12px; color:var(--dim); background:transparent; border:1px solid var(--line); }
+  .iconbtn:hover { color:var(--fg); border-color:var(--accent); }
+  .iconbtn.danger:hover { color:var(--down); border-color:var(--down); }
+
+  .badge { font-size:9.5px; padding:2px 7px; border-radius:999px; border:1px solid var(--line);
+    color:var(--dim); white-space:nowrap; }
+  .badge.type { color:var(--accent); border-color:rgba(94,200,255,.3); background:rgba(94,200,255,.06); }
+  .badge.ok { color:var(--ok); border-color:rgba(70,210,154,.4); background:rgba(70,210,154,.08); }
+  .badge.down { color:var(--down); border-color:rgba(255,107,107,.4); background:rgba(255,107,107,.08); }
+  .badge.unknown { color:var(--unknown); border-color:var(--line); }
+  .badge.run-ok { color:var(--ok); border-color:rgba(70,210,154,.4); }
+  .badge.run-failed { color:var(--down); border-color:rgba(255,107,107,.4); }
+  .badge.run-running { color:var(--accent); border-color:rgba(94,200,255,.4); }
+  .badge.run-never { color:var(--unknown); border-color:var(--line); }
+  .badge.proj { color:var(--fg); border-color:var(--line); background:rgba(255,255,255,.04); }
+  .cdesc { font-size:10.5px; color:var(--dim); margin-top:5px; line-height:1.45; white-space:pre-wrap;
+    overflow-wrap:anywhere; }
+
+  .secret { font-family:'Consolas',ui-monospace,monospace; font-size:11px; color:var(--accent);
+    background:rgba(94,200,255,.06); border:1px solid var(--line); border-radius:6px;
+    padding:3px 8px; margin-top:8px; display:inline-block; letter-spacing:.5px; }
+  .secret.none { color:var(--dim); background:transparent; }
+
+  .sdot { width:10px; height:10px; border-radius:50%; flex:0 0 auto; background:var(--unknown); }
+  .sdot.ok { background:var(--ok); box-shadow:0 0 8px rgba(70,210,154,.7); }
+  .sdot.down { background:var(--down); box-shadow:0 0 8px rgba(255,107,107,.6); }
+  .sdot.unknown { background:var(--unknown); }
+  .sdot.checking { background:var(--accent); animation:pulse 1s ease-in-out infinite; }
+  @keyframes pulse { 0%,100%{opacity:.35;transform:scale(.8)} 50%{opacity:1;transform:scale(1.15)} }
+
+  .form { background:var(--card); border:1px solid rgba(94,200,255,.3); border-radius:11px;
+    padding:12px; display:flex; flex-direction:column; gap:8px; flex:0 0 auto; }
+  .form .frow { display:flex; gap:8px; }
+  .form label { font-size:10px; color:var(--dim); display:block; margin-bottom:3px; }
+  .form .fld { flex:1; min-width:0; }
+  input.in, select.in, textarea.in { width:100%; background:var(--bg); color:var(--fg); border:1px solid var(--line);
+    border-radius:7px; padding:7px 9px; font-size:11.5px; outline:none; font-family:inherit; }
+  input.in:focus, select.in:focus, textarea.in:focus { border-color:var(--accent); }
+  .form .fbtns { display:flex; gap:7px; justify-content:flex-end; margin-top:2px; }
+  .form .hide { display:none; }
+
+  .empty { color:var(--dim); font-size:11px; text-align:center; padding:22px 8px; line-height:1.7; }
+  .note { font-size:10px; color:var(--warn); background:rgba(255,206,107,.07);
+    border:1px solid rgba(255,206,107,.25); border-radius:8px; padding:7px 10px; flex:0 0 auto; }
+  .err { font-size:10px; color:var(--down); background:rgba(255,107,107,.07);
+    border:1px solid rgba(255,107,107,.25); border-radius:8px; padding:7px 10px; flex:0 0 auto; }
+  .meta { font-size:9.5px; color:var(--dim); display:flex; align-items:center; gap:6px; margin-top:5px; flex-wrap:wrap; }
+  .meta .sep { opacity:.4; }
+  .meta .bad { color:var(--down); }
+  .mono { font-family:'Consolas',ui-monospace,monospace; }
+</style></head>
+<body>
+  <div class="head">
+    <h1>🔌 Integration Hub</h1>
+    <div class="spacer"></div>
+    <span class="pill" id="conn"><span class="dot"></span><span id="connTxt">…</span></span>
+  </div>
+
+  <div class="tabs">
+    <div class="tab on" data-zone="cred">🔑 Credentials<span class="n" id="nCred">0</span></div>
+    <div class="tab" data-zone="conn">🛰 Connections<span class="n" id="nConn">0</span></div>
+    <div class="tab" data-zone="flow">⚙ Workflows<span class="n" id="nFlow">0</span></div>
+  </div>
+
+  <!-- ZONE 1: CREDENTIALS -->
+  <div class="zone on" id="z-cred">
+    <div class="zone-bar">
+      <span class="ttl">เก็บคีย์/โทเคน — แสดงเฉพาะค่าที่ mask แล้ว (ค่าจริงไม่เคยออกจาก backend)</span>
+      <span class="spacer"></span>
+      <button class="btn sm" id="addCred">➕ เพิ่ม</button>
+    </div>
+    <div id="credForm"></div>
+    <div id="credList"></div>
+  </div>
+
+  <!-- ZONE 2: CONNECTIONS -->
+  <div class="zone" id="z-conn">
+    <div class="zone-bar">
+      <span class="ttl">สถานะ external tool (probe ตาม check.url)</span>
+      <span class="spacer"></span>
+      <button class="btn sm ghost" id="recheckAll">🔄 ตรวจทั้งหมด</button>
+      <button class="btn sm" id="addConn">➕ เพิ่ม</button>
+    </div>
+    <div id="connForm"></div>
+    <div id="connList"></div>
+  </div>
+
+  <!-- ZONE 3: WORKFLOWS -->
+  <div class="zone" id="z-flow">
+    <div class="zone-bar">
+      <span class="ttl">เวิร์กโฟลว์ (webhook / connection-check / command) + ผลรันล่าสุด</span>
+      <span class="spacer"></span>
+      <button class="btn sm" id="addFlow">➕ เพิ่ม</button>
+    </div>
+    <div id="flowForm"></div>
+    <div id="flowList"></div>
+  </div>
+
+<script>
+  const ID   = "integration-hub";
+  const BASE = "/plugin/" + ID;
+
+  /* Single channel. cmd() NEVER throws: 404 / network error → {offline:true}. */
+  async function cmd(name, args) {
+    try {
+      const r = await fetch(BASE + "/cmd", {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ cmd: name, args: args || {} }),
+      });
+      if (r.status === 404) return { offline: true, res: null };
+      const res = await r.json().catch(() => null);
+      return { offline: false, res };
+    } catch { return { offline: true, res: null }; }
+  }
+
+  let OFFLINE = false;
+  function setConn(offline) {
+    OFFLINE = offline;
+    const p = document.getElementById("conn");
+    p.classList.toggle("offline", offline);
+    p.classList.toggle("online", !offline);
+    document.getElementById("connTxt").textContent = offline ? "backend offline · mock" : "เชื่อมต่อแล้ว";
+  }
+
+  /* mock — mirrors real publicCred / conn / wf shapes */
+  const MOCK = {
+    credentials: [
+      { id:"m1", label:"OpenAI Prod",  type:"api_key", hint:"prod acct", project:"momo_project",  description:"เรียก GPT-4 ในฟีเจอร์แปลภาษา", hasValue:true, masked:"••••3f2a", last4:"3f2a", length:51 },
+      { id:"m2", label:"GitHub Token", type:"bearer",  hint:"",          project:"bagidea",       description:"deploy + อ่าน repo ของ office",  hasValue:true, masked:"••••a91c", last4:"a91c", length:40 },
+      { id:"m3", label:"Slack Webhook",type:"webhook", hint:"#deploys",  project:"",              description:"",                                hasValue:true, masked:"••••z9k2", last4:"z9k2", length:72 },
+    ],
+    connections: [
+      { id:"c1", label:"OpenAI API", status:"ok",      lastChecked:Date.now()-30000, detail:"HTTP 200", check:{ url:"https://api.openai.com/v1/models", method:"GET", expectStatus:200, credentialId:"m1", timeoutMs:8000 } },
+      { id:"c2", label:"Slack Hook", status:"down",    lastChecked:Date.now()-12000, detail:"HTTP 401", check:{ url:"https://hooks.slack.com/services/x", method:"HEAD", expectStatus:200, credentialId:"m3", timeoutMs:8000 } },
+      { id:"c3", label:"Internal DB",status:"unknown", lastChecked:null,             detail:"ไม่ได้ตั้ง check", check:null },
+    ],
+    workflows: [
+      { id:"w1", label:"Notify deploy", trigger:{ kind:"webhook",          target:"https://hooks.slack.com/services/x", method:"POST", credentialId:"m3" }, lastRun:{ at:Date.now()-3600000, status:"ok",     detail:"HTTP 200" } },
+      { id:"w2", label:"Health sweep",  trigger:{ kind:"connection-check", target:"c1",                                  method:"POST", credentialId:null }, lastRun:{ at:Date.now()-7200000, status:"failed", detail:"timeout" } },
+      { id:"w3", label:"Rebuild index", trigger:{ kind:"command",          target:"reindex all",                         method:"POST", credentialId:null }, lastRun:{ at:null,             status:"never",  detail:"" } },
+    ],
+  };
+
+  /* helpers */
+  const el = (tag, cls, txt) => { const e=document.createElement(tag); if(cls)e.className=cls; if(txt!=null)e.textContent=txt; return e; };
+  function ago(ts) {
+    if (!ts) return "ยังไม่เคยตรวจ";
+    const s = Math.floor((Date.now()-ts)/1000);
+    if (s < 60) return s+" วินาทีก่อน";
+    if (s < 3600) return Math.floor(s/60)+" นาทีก่อน";
+    if (s < 86400) return Math.floor(s/3600)+" ชม.ก่อน";
+    return Math.floor(s/86400)+" วันก่อน";
+  }
+  const CRED_TYPES = { api_key:"API Key", bearer:"Bearer", basic:"Basic", oauth:"OAuth", webhook:"Webhook", secret:"Secret" };
+  const WF_KINDS = { webhook:"Webhook (HTTP)", "connection-check":"Connection check", command:"Command" };
+  function iconFor(s) {
+    const t = (s||"").toLowerCase();
+    if (t.includes("openai")||t.includes("gpt")||t.includes("anthropic")||t.includes("claude")) return "🤖";
+    if (t.includes("git")) return "🐙";
+    if (t.includes("slack")) return "💬";
+    if (t.includes("stripe")||t.includes("pay")) return "💳";
+    if (t.includes("postgres")||t.includes("sql")||t.includes("mongo")||t.includes("db")) return "🐘";
+    if (t.includes("aws")||t.includes("s3")||t.includes("gcp")||t.includes("cloud")) return "☁";
+    if (t.includes("webhook")||t.includes("hook")) return "🪝";
+    return "🔑";
+  }
+  function emptyBox(txt) { const d=el("div","empty"); d.innerHTML=txt; return d; }
+  function offlineNote() { return el("div","note","⚠ backend ยังไม่พร้อม (404/เครือข่าย) — กำลังแสดงข้อมูลตัวอย่าง การบันทึกจะมีผลเมื่อ backend ออนไลน์"); }
+  function errNote(msg) { return el("div","err","⚠ "+msg); }
+
+  /* state */
+  let creds = [], conns = [], flows = [];
+  let credForm = null, connForm = null, flowForm = null;
+  // a form is "dirty" once the user touches any input — guards against poll/WS
+  // re-renders wiping out a value the user is mid-typing (see renderCreds/Conns/Flows).
+  let credFormDirty = false, connFormDirty = false, flowFormDirty = false;
+  let lastErr = { cred:"", conn:"", flow:"" };
+  let warmed = false;
+
+  /* destination projects — for binding a credential to "ของโปรเจคไหน".
+     fetched once from the office /projects registry; fail-soft to free pick if offline. */
+  let PROJECTS = [];
+  async function loadProjects() {
+    try {
+      const r = await fetch("/projects");
+      const j = await r.json();
+      PROJECTS = Array.isArray(j && j.projects) ? j.projects : [];
+    } catch { PROJECTS = []; }
+  }
+  function projName(id) {
+    if (!id) return "";
+    const p = PROJECTS.find(x => x.id === id);
+    return p ? p.name : id;   // deregistered project → show raw id so the binding isn't hidden
+  }
+  const esc = s => String(s==null?"":s).replace(/[&<>"']/g,
+    m => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[m]));
+  function projOptions(sel) {
+    const opts = ['<option value="">— ไม่ผูกโปรเจค —</option>'];
+    const seen = new Set();
+    PROJECTS.forEach(p => { seen.add(p.id);
+      opts.push(`<option value="${esc(p.id)}">${esc(p.name)} · ${esc(p.id)}</option>`); });
+    if (sel && !seen.has(sel)) opts.push(`<option value="${esc(sel)}">${esc(sel)} (ไม่อยู่ในรายการแล้ว)</option>`);
+    return opts.join("");
+  }
+
+  /* true when the user is actively focused inside the given form host */
+  function formFocused(hostId) {
+    const host = document.getElementById(hostId);
+    return !!(host && document.activeElement && host.contains(document.activeElement));
+  }
+
+  /* one-shot overview → fill all three zones + counters */
+  async function loadOverview() {
+    const { offline, res } = await cmd("overview");
+    setConn(offline);
+    if (offline) { creds = MOCK.credentials; conns = MOCK.connections; flows = MOCK.workflows; }
+    else {
+      creds = Array.isArray(res && res.credentials) ? res.credentials : [];
+      conns = Array.isArray(res && res.connections) ? res.connections : [];
+      flows = Array.isArray(res && res.workflows) ? res.workflows : [];
+    }
+    document.getElementById("nCred").textContent = creds.length;
+    document.getElementById("nConn").textContent = conns.length;
+    document.getElementById("nFlow").textContent = flows.length;
+  }
+
+  /* ════════════════════ ZONE 1: CREDENTIALS ══════════════════════ */
+  async function loadCreds() {
+    const { offline, res } = await cmd("cred.list");
+    setConn(offline);
+    lastErr.cred = (!offline && res && res.ok === false) ? (res.error || "") : "";
+    creds = offline ? MOCK.credentials : (Array.isArray(res && res.credentials) ? res.credentials : []);
+    renderCreds();
+  }
+  function renderCreds() {
+    document.getElementById("nCred").textContent = creds.length;
+    // never destroy a form the user is mid-edit on; only refresh the list below
+    if (!(credForm && (credFormDirty || formFocused("credForm")))) renderCredForm();
+    const wrap = document.getElementById("credList");
+    wrap.innerHTML = "";
+    if (OFFLINE) wrap.appendChild(offlineNote());
+    if (lastErr.cred) wrap.appendChild(errNote(lastErr.cred));
+    if (!creds.length) { wrap.appendChild(emptyBox("ยังไม่มี credential<br>กด <b>➕ เพิ่ม</b> เพื่อเก็บคีย์แรก")); return; }
+    creds.forEach(c => {
+      const card = el("div","card");
+      const top  = el("div","top");
+      top.appendChild(el("div","ico", iconFor(c.label + " " + c.type)));
+      const mid  = el("div","grow");
+      mid.appendChild(el("div","nm", c.label || "(ไม่มีชื่อ)"));
+      const meta = el("div","meta");
+      meta.appendChild(el("span","badge type", CRED_TYPES[c.type] || c.type || "credential"));
+      if (c.project) meta.appendChild(el("span","badge proj", "📁 " + projName(c.project)));
+      if (c.hint) { meta.appendChild(el("span","sep","·")); meta.appendChild(el("span",null,c.hint)); }
+      if (c.length) { meta.appendChild(el("span","sep","·")); meta.appendChild(el("span",null,c.length+" ตัวอักษร")); }
+      mid.appendChild(meta);
+      if (c.description) mid.appendChild(el("div","cdesc", c.description));
+      top.appendChild(mid);
+      const acts = el("div","acts");
+      const edit = el("div","iconbtn","✎"); edit.title="แก้ไข"; edit.onclick=()=>openCredForm(c);
+      const del  = el("div","iconbtn danger","🗑"); del.title="ลบ"; del.onclick=()=>delCred(c);
+      acts.appendChild(edit); acts.appendChild(del);
+      top.appendChild(acts);
+      card.appendChild(top);
+      card.appendChild(c.hasValue ? el("div","secret mono", c.masked || "••••") : el("div","secret none","— ไม่มีค่า —"));
+      wrap.appendChild(card);
+    });
+  }
+  function openCredForm(c) { credForm = c ? { ...c } : { label:"", type:"api_key", hint:"", description:"", project:"" }; credFormDirty = false; renderCreds(); }
+  function closeCredForm() { credForm = null; credFormDirty = false; renderCreds(); }
+  function renderCredForm() {
+    const host = document.getElementById("credForm");
+    host.innerHTML = "";
+    if (!credForm) return;
+    const editing = !!credForm.id;
+    const f = el("div","form");
+    f.innerHTML =
+      '<div class="frow">'
+      + '<div class="fld"><label>ชื่อ (label) *</label><input class="in" id="cLabel" placeholder="เช่น OpenAI Prod"></div>'
+      + '<div class="fld" style="max-width:140px"><label>ประเภท</label><select class="in" id="cType">'
+        + Object.entries(CRED_TYPES).map(([k,v])=>`<option value="${k}">${v}</option>`).join("")
+      + '</select></div></div>'
+      + '<div class="fld"><label>โปรเจคปลายทาง (key นี้ของโปรเจคไหน)</label>'
+      + '<select class="in" id="cProject">'+projOptions(credForm.project)+'</select></div>'
+      + '<div class="fld"><label>คำอธิบาย (ใช้ทำอะไร — ไม่ใช่ secret)</label>'
+      + '<textarea class="in" id="cDesc" rows="2" maxlength="500" placeholder="เช่น เรียก GPT-4 ในฟีเจอร์แปลภาษาของ momo_project"></textarea></div>'
+      + '<div class="fld"><label>โน้ตสั้น (hint — ไม่ใช่ secret)</label><input class="in" id="cHint" placeholder="เช่น prod account" maxlength="200"></div>'
+      + '<div class="fld"><label>ค่า / secret ('+(editing?'เว้นว่าง = คงค่าเดิม':'จะถูก mask เมื่อบันทึก')+')</label>'
+      + '<input class="in" id="cVal" type="password" placeholder="'+(editing?'•••••• (คงเดิม)':'วางคีย์/โทเคนที่นี่')+'"></div>'
+      + '<div class="fbtns"><button class="btn ghost sm" id="cCancel">ยกเลิก</button>'
+      + '<button class="btn sm" id="cSave">'+(editing?'💾 บันทึกการแก้ไข':'💾 บันทึก')+'</button></div>';
+    host.appendChild(f);
+    const iLabel = document.getElementById("cLabel");
+    const iType  = document.getElementById("cType");
+    const iProj  = document.getElementById("cProject");
+    const iDesc  = document.getElementById("cDesc");
+    const iHint  = document.getElementById("cHint");
+    const iVal   = document.getElementById("cVal");
+    iLabel.value = credForm.label || "";
+    iType.value  = credForm.type || "api_key";
+    iProj.value  = credForm.project || "";       // fallback option already injected by projOptions()
+    iDesc.value  = credForm.description || "";
+    iHint.value  = credForm.hint || "";
+    iVal.value   = credForm.value || "";   // restore unsaved secret across re-renders
+    // sync every keystroke back into state so a poll/WS re-render can't lose it
+    iLabel.oninput = e => { credForm.label = e.target.value; credFormDirty = true; };
+    iType.onchange = e => { credForm.type  = e.target.value; credFormDirty = true; };
+    iProj.onchange = e => { credForm.project = e.target.value; credFormDirty = true; };
+    iDesc.oninput  = e => { credForm.description = e.target.value; credFormDirty = true; };
+    iHint.oninput  = e => { credForm.hint  = e.target.value; credFormDirty = true; };
+    iVal.oninput   = e => { credForm.value = e.target.value; credFormDirty = true; };
+    document.getElementById("cCancel").onclick = closeCredForm;
+    document.getElementById("cSave").onclick = saveCred;
+    iLabel.focus();
+  }
+  async function saveCred() {
+    const label = document.getElementById("cLabel").value.trim();
+    const type  = document.getElementById("cType").value;
+    const project = document.getElementById("cProject").value;
+    const description = document.getElementById("cDesc").value.trim();
+    const hint  = document.getElementById("cHint").value.trim();
+    const value = document.getElementById("cVal").value;
+    if (!label) return document.getElementById("cLabel").focus();
+    const args = { label, type, hint, description, project };
+    if (credForm.id) args.id = credForm.id;
+    if (value) args.value = value;                  // omit when empty → backend keeps existing
+    const { offline, res } = await cmd("cred.set", args);
+    if (!offline && res && res.ok === false) { lastErr.cred = res.error || "บันทึกไม่สำเร็จ"; renderCreds(); return; }
+    if (offline) {
+      const m = value ? maskLocal(value) : { masked:credForm.masked||"••••", last4:credForm.last4||null, length:credForm.length||0, hasValue:!!credForm.hasValue };
+      const patch = { label, type, hint, description, project, ...m };
+      if (credForm.id) creds = creds.map(c => c.id===credForm.id ? { ...c, ...patch } : c);
+      else creds.push({ id:"local-"+(creds.length+1), ...patch });
+    }
+    credForm = null;
+    if (!offline) await loadCreds(); else renderCreds();
+  }
+  function maskLocal(v) {  // matches backend maskValue() exactly
+    if (v.length <= 4) return { masked:"•".repeat(v.length), last4:null, length:v.length, hasValue:true };
+    return { masked:"••••"+v.slice(-4), last4:v.slice(-4), length:v.length, hasValue:true };
+  }
+  async function delCred(c) {
+    const { offline, res } = await cmd("cred.remove", { id:c.id });
+    if (!offline && res && res.ok === false) { lastErr.cred = res.error || "ลบไม่สำเร็จ"; renderCreds(); return; }
+    if (offline) creds = creds.filter(x => x.id !== c.id);
+    if (!offline) await loadCreds(); else renderCreds();
+  }
+
+  /* ════════════════════ ZONE 2: CONNECTIONS ══════════════════════ */
+  async function loadConns() {
+    const { offline, res } = await cmd("conn-list");
+    setConn(offline);
+    lastErr.conn = (!offline && res && res.ok === false) ? (res.error || "") : "";
+    const checking = new Set(conns.filter(k=>k._checking).map(k=>k.id));
+    const list = offline ? MOCK.connections : (Array.isArray(res && res.connections) ? res.connections : []);
+    conns = list.map(c => checking.has(c.id) ? { ...c, _checking:true } : c);
+    renderConns();
+  }
+  function renderConns() {
+    document.getElementById("nConn").textContent = conns.length;
+    if (!(connForm && (connFormDirty || formFocused("connForm")))) renderConnForm();
+    const wrap = document.getElementById("connList");
+    wrap.innerHTML = "";
+    if (OFFLINE) wrap.appendChild(offlineNote());
+    if (lastErr.conn) wrap.appendChild(errNote(lastErr.conn));
+    if (!conns.length) { wrap.appendChild(emptyBox("ยังไม่มีการเชื่อมต่อ<br>กด <b>➕ เพิ่ม</b> เพื่อตั้ง health-check แรก")); return; }
+    conns.forEach(k => {
+      const card = el("div","card");
+      const top  = el("div","top");
+      const st = k.status || "unknown";
+      top.appendChild(el("div","sdot "+(k._checking ? "checking" : st)));
+      top.appendChild(el("div","ico", iconFor(k.label)));
+      const mid = el("div","grow");
+      mid.appendChild(el("div","nm", k.label || "(ไม่มีชื่อ)"));
+      const meta = el("div","meta");
+      meta.appendChild(el("span","badge "+st, st==="ok"?"ออนไลน์":st==="down"?"ล่ม":"ไม่ทราบ"));
+      if (k.detail) { meta.appendChild(el("span","sep","·")); meta.appendChild(el("span", st==="down"?"bad":null, k.detail)); }
+      if (k.check && k.check.url) { meta.appendChild(el("span","sep","·")); meta.appendChild(el("span","mono", k.check.method+" "+k.check.url.replace(/^https?:\/\//,""))); }
+      meta.appendChild(el("span","sep","·")); meta.appendChild(el("span",null,ago(k.lastChecked)));
+      mid.appendChild(meta);
+      top.appendChild(mid);
+      const acts = el("div","acts");
+      const edit = el("div","iconbtn","✎"); edit.title="แก้ไข"; edit.onclick=()=>openConnForm(k);
+      const del  = el("div","iconbtn danger","🗑"); del.title="ลบ"; del.onclick=()=>delConn(k);
+      acts.appendChild(edit); acts.appendChild(del);
+      top.appendChild(acts);
+      const btn = el("button","btn sm ghost","↻"); btn.title="ตรวจซ้ำ";
+      btn.disabled = !!k._checking || !k.check;
+      btn.onclick = () => recheck(k.id);
+      top.appendChild(btn);
+      card.appendChild(top);
+      wrap.appendChild(card);
+    });
+  }
+  function openConnForm(k) {
+    connForm = k ? { ...k, check:{ ...(k.check || {}) } } : { label:"", check:{ url:"", method:"GET", expectStatus:200, credentialId:"", timeoutMs:8000 } };
+    if (!connForm.check) connForm.check = { url:"", method:"GET", expectStatus:200, credentialId:"", timeoutMs:8000 };
+    connFormDirty = false;
+    renderConns();
+  }
+  function closeConnForm() { connForm = null; connFormDirty = false; renderConns(); }
+  function credOptions(selected) {
+    return '<option value="">— ไม่ผูก —</option>'
+      + creds.map(c=>`<option value="${c.id}"${c.id===selected?" selected":""}>${(c.label||c.id)}</option>`).join("");
+  }
+  function renderConnForm() {
+    const host = document.getElementById("connForm");
+    host.innerHTML = "";
+    if (!connForm) return;
+    const editing = !!connForm.id;
+    const ch = connForm.check || {};
+    const f = el("div","form");
+    f.innerHTML =
+      '<div class="fld"><label>ชื่อ (label) *</label><input class="in" id="kLabel" placeholder="เช่น OpenAI API"></div>'
+      + '<div class="fld"><label>Check URL * (http/https)</label><input class="in" id="kUrl" placeholder="https://api.example.com/health"></div>'
+      + '<div class="frow">'
+      + '<div class="fld" style="max-width:100px"><label>Method</label><select class="in" id="kMethod"><option>GET</option><option>HEAD</option></select></div>'
+      + '<div class="fld" style="max-width:120px"><label>Expect status</label><input class="in" id="kExpect" type="number" placeholder="200 · 0=2xx"></div>'
+      + '<div class="fld" style="max-width:120px"><label>Timeout (ms)</label><input class="in" id="kTimeout" type="number" placeholder="8000"></div>'
+      + '</div>'
+      + '<div class="fld"><label>ผูก credential (แนบ Bearer ตอน probe)</label><select class="in" id="kCred">'+credOptions(ch.credentialId)+'</select></div>'
+      + '<div class="fbtns"><button class="btn ghost sm" id="kCancel">ยกเลิก</button>'
+      + '<button class="btn sm" id="kSave">'+(editing?'💾 บันทึกการแก้ไข':'💾 บันทึก')+'</button></div>';
+    host.appendChild(f);
+    const iLabel   = document.getElementById("kLabel");
+    const iUrl     = document.getElementById("kUrl");
+    const iMethod  = document.getElementById("kMethod");
+    const iExpect  = document.getElementById("kExpect");
+    const iTimeout = document.getElementById("kTimeout");
+    const iCred    = document.getElementById("kCred");
+    iLabel.value   = connForm.label || "";
+    iUrl.value     = ch.url || "";
+    iMethod.value  = ch.method || "GET";
+    iExpect.value  = ch.expectStatus != null ? ch.expectStatus : 200;
+    iTimeout.value = ch.timeoutMs != null ? ch.timeoutMs : 8000;
+    // sync every keystroke back into connForm.check so a re-render keeps the input
+    const mark = () => { connFormDirty = true; };
+    iLabel.oninput   = e => { connForm.label = e.target.value; mark(); };
+    iUrl.oninput     = e => { ch.url = e.target.value; mark(); };
+    iMethod.onchange = e => { ch.method = e.target.value; mark(); };
+    iExpect.oninput  = e => { ch.expectStatus = e.target.value; mark(); };
+    iTimeout.oninput = e => { ch.timeoutMs = e.target.value; mark(); };
+    iCred.onchange   = e => { ch.credentialId = e.target.value; mark(); };
+    document.getElementById("kCancel").onclick = closeConnForm;
+    document.getElementById("kSave").onclick = saveConn;
+    iLabel.focus();
+  }
+  async function saveConn() {
+    const label = document.getElementById("kLabel").value.trim();
+    const url   = document.getElementById("kUrl").value.trim();
+    const method = document.getElementById("kMethod").value;
+    const expectStatus = parseInt(document.getElementById("kExpect").value, 10);
+    const timeoutMs = parseInt(document.getElementById("kTimeout").value, 10);
+    const credentialId = document.getElementById("kCred").value;
+    if (!label) return document.getElementById("kLabel").focus();
+    if (!url)   return document.getElementById("kUrl").focus();
+    const check = { url, method,
+      expectStatus: Number.isFinite(expectStatus) ? expectStatus : 200,
+      timeoutMs: Number.isFinite(timeoutMs) ? timeoutMs : 8000 };
+    if (credentialId) check.credentialId = credentialId;
+    const args = { label, check };
+    if (connForm.id) args.id = connForm.id;
+    const { offline, res } = await cmd("conn-add", args);
+    if (!offline && res && res.ok === false) { lastErr.conn = res.error || "บันทึกไม่สำเร็จ"; renderConns(); return; }
+    if (offline) {
+      const patch = { label, status:connForm.status||"unknown", lastChecked:connForm.lastChecked||null, detail:connForm.detail||"", check:{ ...check, credentialId:credentialId||null } };
+      if (connForm.id) conns = conns.map(c => c.id===connForm.id ? { ...c, ...patch } : c);
+      else conns.push({ id:"local-"+(conns.length+1), ...patch });
+    }
+    connForm = null;
+    if (!offline) await loadConns(); else renderConns();
+  }
+  async function delConn(k) {
+    const { offline, res } = await cmd("conn-remove", { id:k.id });
+    if (!offline && res && res.ok === false) { lastErr.conn = res.error || "ลบไม่สำเร็จ"; renderConns(); return; }
+    if (offline) conns = conns.filter(x => x.id !== k.id);
+    if (!offline) await loadConns(); else renderConns();
+  }
+  function applyConn(u) { conns = conns.map(k => k.id===u.id ? { ...k, ...u, _checking:false } : k); }
+  async function recheck(id) {
+    conns = conns.map(k => (id==null || k.id===id) ? { ...k, _checking:true } : k);
+    renderConns();
+    const { offline, res } = await cmd(id==null ? "status.all" : "status", id==null ? {} : { id });
+    setConn(offline);
+    if (!offline && res && Array.isArray(res.connections)) { res.connections.forEach(applyConn); renderConns(); return; }
+    if (!offline && res && res.ok === false) { lastErr.conn = res.error || "ตรวจไม่สำเร็จ"; conns = conns.map(k=>({ ...k, _checking:false })); renderConns(); return; }
+    // offline: simulate probe (mock only)
+    conns = conns.map(k => {
+      if (id!=null && k.id!==id) return k;
+      if (!k.check) return { ...k, _checking:false, status:"unknown", lastChecked:Date.now(), detail:"ไม่ได้ตั้ง check" };
+      const up = (k.label.length % 2) === 0;
+      return { ...k, _checking:false, status: up?"ok":"down", lastChecked:Date.now(), detail: up?"HTTP 200":"mock: unreachable" };
+    });
+    renderConns();
+  }
+
+  /* ════════════════════ ZONE 3: WORKFLOWS ════════════════════════ */
+  async function loadFlows() {
+    const { offline, res } = await cmd("wf.list");
+    setConn(offline);
+    lastErr.flow = (!offline && res && res.ok === false) ? (res.error || "") : "";
+    flows = offline ? MOCK.workflows : (Array.isArray(res && res.workflows) ? res.workflows : []);
+    renderFlows();
+  }
+  function renderFlows() {
+    document.getElementById("nFlow").textContent = flows.length;
+    if (!(flowForm && (flowFormDirty || formFocused("flowForm")))) renderFlowForm();
+    const wrap = document.getElementById("flowList");
+    wrap.innerHTML = "";
+    if (OFFLINE) wrap.appendChild(offlineNote());
+    if (lastErr.flow) wrap.appendChild(errNote(lastErr.flow));
+    if (!flows.length) { wrap.appendChild(emptyBox("ยังไม่มีเวิร์กโฟลว์<br>กด <b>➕ เพิ่ม</b> เพื่อสร้าง trigger แรก")); return; }
+    flows.forEach(w => {
+      const card = el("div","card");
+      const top  = el("div","top");
+      top.appendChild(el("div","ico", w._running ? "⏳" : "⚙"));
+      const mid = el("div","grow");
+      mid.appendChild(el("div","nm", w.label || "(ไม่มีชื่อ)"));
+      const tg = w.trigger;
+      const sub = el("div","meta");
+      if (tg) {
+        sub.appendChild(el("span","badge type", WF_KINDS[tg.kind] || tg.kind));
+        sub.appendChild(el("span","mono", tg.kind==="connection-check" ? ("→ "+connLabel(tg.target)) : ((tg.kind==="webhook"?tg.method+" ":"")+tg.target)));
+      } else sub.appendChild(el("span","badge unknown","ยังไม่ตั้ง trigger"));
+      mid.appendChild(sub);
+      const lr = w.lastRun || { status:"never" };
+      const run = el("div","meta");
+      if (w._running) run.appendChild(el("span","badge run-running","กำลังรัน…"));
+      else {
+        const stTxt = { ok:"✓ สำเร็จ", failed:"✗ ล้มเหลว", never:"ยังไม่เคยรัน" }[lr.status] || lr.status;
+        run.appendChild(el("span","badge run-"+(lr.status||"never"), stTxt));
+        if (lr.at) { run.appendChild(el("span","sep","·")); run.appendChild(el("span",null,ago(lr.at))); }
+        if (lr.detail) { run.appendChild(el("span","sep","·")); run.appendChild(el("span", lr.status==="failed"?"bad":null, lr.detail)); }
+      }
+      mid.appendChild(run);
+      top.appendChild(mid);
+      const acts = el("div","acts");
+      const edit = el("div","iconbtn","✎"); edit.title="แก้ไข"; edit.onclick=()=>openFlowForm(w);
+      const del  = el("div","iconbtn danger","🗑"); del.title="ลบ"; del.onclick=()=>delFlow(w);
+      acts.appendChild(edit); acts.appendChild(del);
+      top.appendChild(acts);
+      const runBtn = el("button","btn sm","▶ รัน"); runBtn.disabled = !!w._running || !tg;
+      runBtn.title = tg ? "trigger" : "ตั้ง trigger ก่อนถึงจะรันได้";
+      runBtn.onclick = () => trigger(w.id);
+      top.appendChild(runBtn);
+      card.appendChild(top);
+      wrap.appendChild(card);
+    });
+  }
+  function connLabel(id) { const c = conns.find(x=>x.id===id); return c ? c.label : id; }
+  function openFlowForm(w) {
+    const t = w && w.trigger || {};
+    flowForm = w ? { id:w.id, label:w.label, kind:t.kind||"webhook", target:t.target||"", method:t.method||"POST", credentialId:t.credentialId||"" }
+                 : { label:"", kind:"webhook", target:"", method:"POST", credentialId:"" };
+    flowFormDirty = false;
+    renderFlows();
+  }
+  function closeFlowForm() { flowForm = null; flowFormDirty = false; renderFlows(); }
+  function connOptions(selected) {
+    return '<option value="">— เลือก connection —</option>'
+      + conns.map(c=>`<option value="${c.id}"${c.id===selected?" selected":""}>${(c.label||c.id)}</option>`).join("");
+  }
+  function renderFlowForm() {
+    const host = document.getElementById("flowForm");
+    host.innerHTML = "";
+    if (!flowForm) return;
+    const editing = !!flowForm.id;
+    const isWebhook = flowForm.kind === "webhook";
+    const isConnChk = flowForm.kind === "connection-check";
+    const targetField = isConnChk
+      ? '<div class="fld"><label>Connection *</label><select class="in" id="wTarget">'+connOptions(flowForm.target)+'</select></div>'
+      : '<div class="fld"><label>'+(isWebhook?'URL * (http/https)':'คำสั่ง / target *')+'</label><input class="in" id="wTarget" placeholder="'+(isWebhook?'https://hooks.slack.com/...':'เช่น reindex all')+'"></div>';
+    const f = el("div","form");
+    f.innerHTML =
+      '<div class="frow">'
+      + '<div class="fld"><label>ชื่อ (label) *</label><input class="in" id="wLabel" placeholder="เช่น Notify deploy"></div>'
+      + '<div class="fld" style="max-width:160px"><label>ชนิด trigger</label><select class="in" id="wKind">'
+        + Object.entries(WF_KINDS).map(([k,v])=>`<option value="${k}">${v}</option>`).join("")
+      + '</select></div></div>'
+      + targetField
+      + '<div class="frow">'
+      + '<div class="fld'+(isWebhook?'':' hide')+'" id="wMethodWrap" style="max-width:120px"><label>Method</label><select class="in" id="wMethod"><option>POST</option><option>GET</option></select></div>'
+      + '<div class="fld"><label>ผูก credential (แนบ Bearer)</label><select class="in" id="wCred">'+credOptions(flowForm.credentialId)+'</select></div>'
+      + '</div>'
+      + '<div class="fbtns"><button class="btn ghost sm" id="wCancel">ยกเลิก</button>'
+      + '<button class="btn sm" id="wSave">'+(editing?'💾 บันทึกการแก้ไข':'💾 บันทึก')+'</button></div>';
+    host.appendChild(f);
+    document.getElementById("wLabel").value = flowForm.label || "";
+    document.getElementById("wKind").value  = flowForm.kind || "webhook";
+    const tEl = document.getElementById("wTarget"); if (tEl) tEl.value = flowForm.target || "";
+    document.getElementById("wMethod").value = flowForm.method || "POST";
+    // sync every keystroke back into flowForm so a poll/WS re-render can't lose it
+    const syncFlow = () => { flowForm = collectFlowForm(); flowFormDirty = true; };
+    ["wLabel","wTarget","wMethod","wCred"].forEach(id => {
+      const e = document.getElementById(id); if (e) e.oninput = e.onchange = syncFlow;
+    });
+    document.getElementById("wKind").onchange = (e) => {  // re-render so target field + method match the kind
+      flowForm = collectFlowForm(); flowForm.kind = e.target.value; flowFormDirty = true;
+      renderFlowForm();   // force-rebuild past the dirty guard (kind drives which fields show)
+    };
+    document.getElementById("wCancel").onclick = closeFlowForm;
+    document.getElementById("wSave").onclick = saveFlow;
+    document.getElementById("wLabel").focus();
+  }
+  function collectFlowForm() {
+    const g = id => { const e=document.getElementById(id); return e ? e.value : ""; };
+    return { id:flowForm.id, label:g("wLabel"), kind:g("wKind"), target:g("wTarget"), method:g("wMethod"), credentialId:g("wCred") };
+  }
+  async function saveFlow() {
+    const v = collectFlowForm();
+    const label = (v.label||"").trim();
+    const target = (v.target||"").trim();
+    if (!label) return document.getElementById("wLabel").focus();
+    if (!target) { const t=document.getElementById("wTarget"); if(t)t.focus(); return; }
+    const trigger = { kind:v.kind, target };
+    if (v.kind === "webhook") trigger.method = v.method || "POST";
+    if (v.credentialId) trigger.credentialId = v.credentialId;
+    const args = { label, trigger };
+    if (v.id) args.id = v.id;
+    const { offline, res } = await cmd("wf.set", args);
+    if (!offline && res && res.ok === false) { lastErr.flow = res.error || "บันทึกไม่สำเร็จ"; renderFlows(); return; }
+    if (offline) {
+      const patch = { label, trigger:{ ...trigger, method:trigger.method||"POST", credentialId:v.credentialId||null } };
+      if (v.id) flows = flows.map(w => w.id===v.id ? { ...w, ...patch } : w);
+      else flows.push({ id:"local-"+(flows.length+1), lastRun:{ at:null, status:"never", detail:"" }, ...patch });
+    }
+    flowForm = null;
+    if (!offline) await loadFlows(); else renderFlows();
+  }
+  async function delFlow(w) {
+    const { offline, res } = await cmd("wf.remove", { id:w.id });
+    if (!offline && res && res.ok === false) { lastErr.flow = res.error || "ลบไม่สำเร็จ"; renderFlows(); return; }
+    if (offline) flows = flows.filter(x => x.id !== w.id);
+    if (!offline) await loadFlows(); else renderFlows();
+  }
+  async function trigger(id) {
+    flows = flows.map(w => w.id===id ? { ...w, _running:true } : w);
+    renderFlows();
+    const { offline, res } = await cmd("wf.trigger", { id });   // fail-open: ok:true even if run failed
+    setConn(offline);
+    if (!offline && res && res.workflow) { flows = flows.map(w => w.id===id ? { ...res.workflow, _running:false } : w); renderFlows(); return; }
+    if (!offline && res && res.ok === false) { lastErr.flow = res.error || "รันไม่สำเร็จ"; flows = flows.map(w=>({ ...w, _running:false })); renderFlows(); return; }
+    // offline: simulate a run
+    flows = flows.map(w => w.id!==id ? w : { ...w, _running:false, lastRun:{ at:Date.now(), status:"ok", detail:"HTTP 200" } });
+    renderFlows();
+  }
+
+  /* ════════════════════════ TABS + WIRING ════════════════════════ */
+  const LOADERS = { cred:loadCreds, conn:loadConns, flow:loadFlows };
+  const RENDER  = { cred:renderCreds, conn:renderConns, flow:renderFlows };
+  let activeZone = "cred";
+  function showZone(z) {
+    activeZone = z;
+    document.querySelectorAll(".tab").forEach(t => t.classList.toggle("on", t.dataset.zone===z));
+    document.querySelectorAll(".zone").forEach(zn => zn.classList.toggle("on", zn.id==="z-"+z));
+    if (warmed) RENDER[z]();   // instant paint from overview cache
+    LOADERS[z]();              // then refresh that zone
+  }
+  document.querySelectorAll(".tab").forEach(t => t.onclick = () => showZone(t.dataset.zone));
+  document.getElementById("addCred").onclick    = () => { showZone("cred"); openCredForm(null); };
+  document.getElementById("addConn").onclick    = () => { showZone("conn"); openConnForm(null); };
+  document.getElementById("addFlow").onclick    = () => { showZone("flow"); openFlowForm(null); };
+  document.getElementById("recheckAll").onclick = () => recheck(null);
+
+  // live sync when an AGENT changes things (backend broadcasts plugin.event)
+  try {
+    const ws = new WebSocket("ws://127.0.0.1:8787/ws");
+    ws.onmessage = (m) => { try { const e = JSON.parse(m.data);
+      if (!e.replay && e.type==="plugin.event" && e.plugin===ID) LOADERS[activeZone](); } catch {} };
+  } catch {}
+
+  // boot: one overview fills all three, then paint + poll the active zone
+  (async () => {
+    await Promise.all([loadOverview(), loadProjects()]);   // project list ready before first form paint
+    warmed = true;
+    renderCreds();
+    setInterval(() => LOADERS[activeZone](), 6000);
+  })();
+</script>
+</body></html>

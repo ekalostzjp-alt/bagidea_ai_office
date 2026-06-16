@@ -1,0 +1,21 @@
+{
+  "id": "integration-hub",
+  "name": "🔌 Integration Hub",
+  "version": "1.0.0",
+  "description": "เชื่อมต่อเครื่องมือภายนอก — เก็บ credential แบบเข้ารหัส/มาสก์, เช็คสถานะการเชื่อมต่อ (ok/down/unknown), และ trigger workflow ภายนอกได้ทั้งจาก UI และ agent",
+  "panel": "panel.html",
+  "commands": [
+    { "name": "cred.list", "args": "", "desc": "ดู credential ทั้งหมด (secret ถูกมาสก์)" },
+    { "name": "cred.set", "args": "{id?,name,tool,baseUrl?,authType?,authHeader?,secret?}", "desc": "เพิ่ม/แก้ credential (ไม่ส่ง secret ตอนแก้ = คงค่าเดิม)" },
+    { "name": "cred.remove", "args": "{id}", "desc": "ลบ credential" },
+    { "name": "cred.use", "args": "{id,action:'http'|'ssh',...}", "desc": "เอา credential ไปยิง action จริง (http/ssh) โดยผู้เรียกไม่เห็นค่าจริง — คืนแค่ผลลัพธ์" },
+    { "name": "status", "args": "{id}", "desc": "เช็คสถานะการเชื่อมต่อของ credential หนึ่งตัว (fail-open)" },
+    { "name": "status.all", "args": "", "desc": "เช็คสถานะการเชื่อมต่อของทุก credential" },
+    { "name": "wf.list", "args": "", "desc": "ดู workflow ทั้งหมด + lastRun" },
+    { "name": "wf.set", "args": "{id?,name,url,method?,credentialId?,headers?,body?}", "desc": "เพิ่ม/แก้ workflow" },
+    { "name": "wf.remove", "args": "{id}", "desc": "ลบ workflow" },
+    { "name": "wf.trigger", "args": "{id,payload?}", "desc": "trigger workflow แล้วคืนผลลัพธ์ + lastRun" }
+  ],
+  "needsKeys": [],
+  "core": true
+}

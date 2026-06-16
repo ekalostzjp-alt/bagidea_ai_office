@@ -1,0 +1,17 @@
+{
+  "name": "daemon",
+  "version": "1.0.0",
+  "description": "",
+  "main": "channels.js",
+  "scripts": {
+    "test": "node --test tests/maintenance.test.js tests/skills.test.js tests/restart-cuts.test.js tests/watchdog.test.js tests/brain-engine.test.js tests/db.test.js tests/force-stop.test.js",
+    "start": "node server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "pg": "^8.21.0"
+  }
+}

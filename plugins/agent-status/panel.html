@@ -1,0 +1,561 @@
+<!doctype html>
+<!--
+  📊 Agent Status — panel (เจ้าภาพ FE: น้องไวท์).
+  รวม 2 plugin เดิมให้จบในบอร์ดเดียว "อ่านรวดเดียวจบ":
+    · agent-live-status      → การ์ดต่อ agent + sparkline CPU/MEM สด + คิวงาน + ไฟแดง timeout
+    · agent-status-dashboard → แถบ warnings (collision) + claims/queue กัน task ชนกัน
+  เลย์เอาต์หน้าเดียว บนลงล่าง: alert(timeout) → warnings → grid การ์ด → claims strip.
+
+  Source เดียว: POST /plugin/agent-status/cmd {"cmd":"status"} (backend ของแบล็ค).
+  shape ตาม CONTRACT หัว index.js:
+    { ok, ts, now, thresholdMs, liveSource:"up"|"down",
+      agents:[{ id, name, cpu, memMB, queueLen, state:"working"|"stuck"|"idle",
+                lastHeartbeatMs, timedOut, project, task }],
+      claims:[{ id, agentId, project, files:[rel], reason, ts, ttlMs }],   // files:[]=ทั้งโปรเจค
+      queue:[{ id, claim:{…}, blockedBy:[claimId], since }],
+      warnings:[{ type:"project-overlap"|"file-overlap", project, agents:[], files:[],
+                  severity:"warn"|"block", detectedAt }], msg }
+
+  degrade (ห้ามหน้าพัง):
+    · cpu/memMB ยัง null (ยังไม่มี per-agent OS source) ⇒ กราฟราบ + ค่าโชว์ "—" (ของจริง ไม่ปลอม)
+    · liveSource:"down" ⇒ agents:[] แต่ claims/queue/warnings ยังโชว์ครบ
+    · cmd ล่ม/ยังไม่ลงดิสก์ ⇒ โหมด DEMO (mock สด) ให้เห็นเลย์เอาต์ทันที (มีป้าย DEMO กำกับ)
+    · field ไหนหาย ⇒ default [] / — (ไม่ throw)
+  ธีม BagIdea: :root #0c1322 / accent #5ec8ff, slim ::-webkit-scrollbar. ทุกสี = CSS var.
+  WS sync: {type:'plugin.event',plugin:'agent-status'} หรือ agent.status ⇒ ดึงทันที.
+-->
+<html lang="th"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>📊 Agent Status</title>
+<style>
+  :root {
+    --bg:#0c1322; --fg:#dbe7ff; --dim:#7e8db0; --accent:#5ec8ff; --card:#13203a;
+    --line:rgba(255,255,255,0.08);
+    --cpu:#5ec8ff;        /* เส้น CPU = accent */
+    --mem:#b58cff;        /* เส้น MEM = ม่วงคู่ accent */
+    --ok:#5fd6a0;         /* working / claim ปกติ */
+    --idle:#7e8db0;       /* idle = dim */
+    --warn:#ffb454;       /* คิวสูง / severity:warn (project-overlap) = ส้ม */
+    --block:#ff5c6c;      /* timeout / severity:block (file-overlap) = แดง */
+    --queue:#b58cff;      /* คิวรอ = ม่วง */
+  }
+  * { box-sizing:border-box; margin:0; padding:0; font-family:'Segoe UI','Noto Sans Thai',sans-serif; }
+  html { scrollbar-width: thin; scrollbar-color: rgba(110,180,255,.3) transparent; }
+  ::-webkit-scrollbar { width: 9px; height: 9px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(110,180,255,.22); border-radius: 6px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(110,180,255,.45); }
+  html, body { height:100%; }
+  body { background:var(--bg); color:var(--fg); padding:12px; user-select:none;
+    display:flex; flex-direction:column; gap:10px; overflow:hidden; }
+
+  /* ── header ─────────────────────────────────────────── */
+  .hdr { display:flex; align-items:center; gap:10px; flex:0 0 auto; }
+  .hdr .ttl { font-size:13px; font-weight:700; letter-spacing:.3px; }
+  .hdr .ttl b { color:var(--accent); }
+  .dot { width:8px; height:8px; border-radius:50%; background:var(--idle); flex:0 0 auto;
+    box-shadow:0 0 0 0 transparent; transition:background .2s; }
+  .dot.on { background:var(--ok); box-shadow:0 0 8px rgba(95,214,160,.7); }
+  .spacer { flex:1 1 auto; }
+  .src { font-size:9.5px; font-weight:700; padding:2px 9px; border-radius:999px;
+    border:1px solid currentColor; white-space:nowrap; display:none; }
+  .src.demo { color:var(--warn); display:inline-block; animation:pulseBar 1.4s ease-in-out infinite; }
+  .src.live { color:var(--ok); display:inline-block; }
+  .src.down { color:var(--block); display:inline-block; animation:pulseBar 1.2s ease-in-out infinite; }
+  .meta { font-size:10px; color:var(--dim); font-variant-numeric:tabular-nums; white-space:nowrap; }
+
+  /* ── global alert banner (timeout) ──────────────────── */
+  #alertBar { flex:0 0 auto; display:none; align-items:center; gap:8px;
+    background:rgba(255,92,108,0.12); border:1px solid var(--block);
+    border-radius:10px; padding:7px 12px; font-size:11px; color:var(--block);
+    font-weight:700; animation:pulseBar 1s ease-in-out infinite; }
+  #alertBar.show { display:flex; }
+  #alertBar .led { width:9px;height:9px;border-radius:50%;background:var(--block);box-shadow:0 0 8px var(--block); flex:0 0 auto; }
+  @keyframes pulseBar { 0%,100%{ opacity:1 } 50%{ opacity:.55 } }
+
+  /* ── warnings band (collision) ──────────────────────── */
+  #warnings { flex:0 0 auto; display:flex; flex-direction:column; gap:6px; max-height:26%; overflow-y:auto; padding-right:2px; }
+  .wz { display:flex; align-items:center; gap:9px; border-radius:10px;
+    padding:7px 11px; font-size:11px; font-weight:600; line-height:1.4;
+    animation:pulseBar 1.3s ease-in-out infinite; }
+  .wz.warn  { background:rgba(255,180,84,0.12); border:1px solid var(--warn);  color:var(--warn); }
+  .wz.block { background:rgba(255,92,108,0.13); border:1px solid var(--block); color:var(--block); }
+  .wz .ic { font-size:14px; line-height:1; flex:0 0 auto; }
+  .wz .body { flex:1 1 auto; min-width:0; overflow:hidden; }
+  .wz .ty { font-size:8.5px; font-weight:800; letter-spacing:.5px; text-transform:uppercase; opacity:.85; }
+  .wz .proj { font-weight:800; }
+  .wz .who { color:var(--fg); font-weight:600; opacity:.92; }
+  .wz .files { color:var(--fg); opacity:.7; font-weight:500; font-size:10px; overflow:hidden;
+    text-overflow:ellipsis; white-space:nowrap; }
+  .wz .sev { flex:0 0 auto; font-size:8.5px; font-weight:800; padding:2px 8px;
+    border-radius:999px; border:1px solid currentColor; text-transform:uppercase; letter-spacing:.4px; }
+  #clear { flex:0 0 auto; display:none; align-items:center; gap:8px; font-size:11px;
+    color:var(--ok); background:rgba(95,214,160,0.10); border:1px solid var(--ok);
+    border-radius:10px; padding:6px 12px; font-weight:600; }
+  #clear.show { display:flex; }
+
+  /* ── grid of agent cards ────────────────────────────── */
+  #grid { flex:1 1 auto; min-height:0; overflow-y:auto; display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:10px; padding-right:2px; align-content:start; }
+  .agent { background:linear-gradient(160deg,var(--card),var(--bg));
+    border:1px solid var(--line); border-radius:12px; padding:11px; position:relative;
+    transition:border-color .25s, box-shadow .25s; }
+  .agent.timeout { border-color:var(--block); box-shadow:0 0 0 1px var(--block),0 0 16px rgba(255,92,108,.35);
+    animation:cardBlink 1s ease-in-out infinite; }
+  @keyframes cardBlink { 0%,100%{ box-shadow:0 0 0 1px var(--block),0 0 16px rgba(255,92,108,.35) }
+    50%{ box-shadow:0 0 0 1px var(--block),0 0 4px rgba(255,92,108,.15) } }
+  .agent.flag-warn::before, .agent.flag-block::before {
+    content:""; position:absolute; left:0; top:10px; bottom:10px; width:3px; border-radius:0 3px 3px 0; }
+  .agent.flag-warn::before  { background:var(--warn); }
+  .agent.flag-block::before { background:var(--block); }
+
+  .arow { display:flex; align-items:center; gap:7px; }
+  .nm { font-size:12.5px; font-weight:700; flex:1 1 auto; overflow:hidden;
+    text-overflow:ellipsis; white-space:nowrap; }
+  .badge { font-size:9.5px; font-weight:700; padding:2px 7px; border-radius:999px;
+    border:1px solid currentColor; white-space:nowrap; }
+  .badge.working { color:var(--ok); }
+  .badge.idle    { color:var(--idle); }
+  .badge.stuck   { color:var(--block); }
+  .alarm { display:none; align-items:center; gap:4px; font-size:9px; font-weight:800; color:var(--block); }
+  .agent.timeout .alarm { display:inline-flex; }
+  .alarm .led { width:8px; height:8px; border-radius:50%; background:var(--block);
+    box-shadow:0 0 8px var(--block); animation:ledBlink .7s steps(1) infinite; }
+  @keyframes ledBlink { 50%{ opacity:.15; box-shadow:none } }
+
+  .sub { font-size:10px; color:var(--dim); margin:5px 0 7px; overflow:hidden;
+    text-overflow:ellipsis; white-space:nowrap; min-height:13px; }
+  .sub .proj { color:var(--accent); font-weight:600; }
+
+  canvas.spark { width:100%; height:52px; display:block; border-radius:6px; background:rgba(0,0,0,0.18); }
+  .legend { display:flex; gap:12px; margin-top:6px; font-size:10px; }
+  .legend .it { display:flex; align-items:center; gap:5px; color:var(--dim); }
+  .legend .sw { width:14px; height:3px; border-radius:2px; }
+  .legend .val { color:var(--fg); font-weight:700; font-variant-numeric:tabular-nums; }
+
+  .q { display:flex; align-items:center; gap:7px; margin-top:8px; font-size:10px; color:var(--dim); }
+  .qbar { flex:1 1 auto; height:7px; border-radius:999px; background:rgba(255,255,255,0.06); overflow:hidden; }
+  .qfill { height:100%; width:0; border-radius:999px; background:var(--accent); transition:width .3s, background .3s; }
+  .qfill.warn { background:var(--warn); }
+  .qfill.alert { background:var(--block); }
+  .qn { font-weight:700; color:var(--fg); font-variant-numeric:tabular-nums; min-width:14px; text-align:right; }
+
+  /* ── claims strip (active claims + queued) ──────────── */
+  .strip { flex:0 0 auto; border:1px solid var(--line); border-radius:12px;
+    background:linear-gradient(160deg,var(--card),var(--bg)); overflow:hidden; max-height:30%;
+    display:flex; flex-direction:column; }
+  .strip .ph { flex:0 0 auto; display:flex; align-items:center; gap:7px; padding:7px 12px;
+    border-bottom:1px solid var(--line); font-size:10px; font-weight:800; color:var(--dim);
+    letter-spacing:.4px; text-transform:uppercase; }
+  .strip .ph .n { color:var(--fg); font-variant-numeric:tabular-nums;
+    background:rgba(255,255,255,0.06); border-radius:999px; padding:1px 8px; font-size:10px; }
+  .strip .ph .qn { color:var(--queue); }
+  .strip .scroll { flex:1 1 auto; min-height:0; overflow-y:auto; display:flex; flex-wrap:wrap;
+    gap:8px; padding:9px 12px; align-content:flex-start; }
+  .chip { display:flex; flex-direction:column; gap:4px; min-width:190px; max-width:260px; flex:1 1 200px;
+    border:1px solid var(--line); border-radius:10px; padding:8px 10px; background:rgba(255,255,255,0.02); }
+  .chip.queued { border-left:3px solid var(--queue); }
+  .chip .top { display:flex; align-items:center; gap:7px; }
+  .chip .who { font-weight:700; font-size:11.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .chip .pj { color:var(--accent); font-size:10.5px; font-weight:600; overflow:hidden;
+    text-overflow:ellipsis; white-space:nowrap; }
+  .chip .qpos { flex:0 0 auto; font-size:9px; font-weight:800; color:var(--queue);
+    background:rgba(181,140,255,0.14); border-radius:999px; padding:1px 7px; }
+  .chip .fls { color:var(--dim); font-size:10px; font-family:'Cascadia Code',Consolas,monospace;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .chip .fls.whole { color:var(--warn); font-family:inherit; font-weight:600; }
+  .chip .reason { color:var(--fg); opacity:.75; font-size:10px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .chip .blk { color:var(--queue); opacity:.85; font-size:9.5px; }
+  .ttl { display:flex; align-items:center; gap:7px; }
+  .ttl .bar { flex:1 1 auto; height:5px; border-radius:999px; background:rgba(255,255,255,0.07); overflow:hidden; }
+  .ttl .fill { height:100%; width:0; border-radius:999px; background:var(--ok); transition:width .9s linear, background .3s; }
+  .ttl .fill.warn  { background:var(--warn); }
+  .ttl .fill.block { background:var(--block); }
+  .ttl .left { font-size:9px; color:var(--dim); font-variant-numeric:tabular-nums; min-width:42px; text-align:right; }
+  .strip .none-msg { color:var(--dim); font-size:10.5px; padding:6px 4px; }
+
+  #empty { color:var(--dim); font-size:11px; text-align:center; padding:24px 8px; line-height:1.7; }
+</style></head>
+<body>
+<div class="hdr">
+  <span class="dot" id="dot"></span>
+  <span class="ttl">📊 Agent <b>Status</b></span>
+  <span class="spacer"></span>
+  <span class="src" id="src"></span>
+  <span class="meta" id="meta">—</span>
+</div>
+
+<div id="alertBar"><span class="led"></span><span id="alertText"></span></div>
+
+<div id="warnings"></div>
+<div id="clear">✅ ไม่มี collision — claim ไม่ทับกัน</div>
+
+<div id="grid"></div>
+<div id="empty" style="display:none">ยังไม่มีข้อมูล agent<br>กำลังเชื่อมต่อ source…</div>
+
+<div class="strip">
+  <div class="ph">🔖 Claims <span class="n" id="nClaims">0</span>
+    · <span>⏳ Queue</span> <span class="n qn" id="nQueue">0</span></div>
+  <div class="scroll" id="claims"></div>
+</div>
+
+<script>
+  // ── single source: POST /plugin/agent-status/cmd {cmd:"status"} (backend แบล็ค) ──
+  const CMD_URL = "/plugin/agent-status/cmd";
+  const $ = (id) => document.getElementById(id);
+  const css = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+  const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (m) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[m]));
+
+  const HISTORY = new Map();   // agentId -> { cpu:[], mem:[] } rolling
+  const CAP = 60;
+  const cards = new Map();     // agentId -> { el, refs }
+  let memMax = 1024;           // เพดานสเกล MEM ของ sparkline (โตตามค่าจริง)
+  let lastOk = 0;
+  let skew = 0;                // serverNow - clientNow ⇒ TTL countdown ตรงแม้ clock เพี้ยน
+  let srcMode = null;          // "live" | "down" | "demo"
+  const now = () => Date.now() + skew;
+
+  // ── normalize: รับ field จริงของ CONTRACT (memMB/queueLen/name) + เผื่อ alias (mem/queue) ──
+  const pickName = (a) => a.name || a.agentId || a.id || "—";
+  function normAgent(a) {
+    const raw = String(a.state || a.status || "idle").toLowerCase();
+    const timedOut = a.timedOut === true || raw === "timedout";
+    const state = raw === "working" ? "working" : (raw === "stuck" ? "stuck" : "idle");
+    const cpu = Number.isFinite(a.cpu) ? a.cpu : null;
+    const mem = Number.isFinite(a.memMB) ? a.memMB : (Number.isFinite(a.mem) ? a.mem : null);
+    const queue = Number.isFinite(a.queueLen) ? a.queueLen : (Number.isFinite(a.queue) ? a.queue : 0);
+    return { id: pickName(a), state, cpu, mem, queue, timedOut,
+      project: state === "idle" ? null : (a.project || null),
+      task: state === "idle" ? null : (a.task || null) };
+  }
+  const agentName = (a) => (a && typeof a === "object") ? (a.name || a.agentId || a.id || "—") : String(a);
+  function deriveWarnings(p) {
+    const src = Array.isArray(p.warnings) ? p.warnings
+      : Array.isArray(p.collisions) ? p.collisions : [];
+    return src.map((w) => {
+      const agents = (w.agents || []).map(agentName);
+      return { type: w.type || "project-overlap", project: w.project, agents,
+        files: Array.isArray(w.files) ? w.files : [],
+        severity: w.severity === "block" ? "block" : w.severity === "warn" ? "warn"
+          : (w.type === "file-overlap" || agents.length >= 3 ? "block" : "warn") };
+    });
+  }
+  function normClaim(c) {
+    return { agentId: agentName(c), project: c.project, files: c.files,
+      reason: c.reason || "", ts: c.ts, ttlMs: c.ttlMs };
+  }
+  function normQueue(q, i) {
+    const c = q.claim || q;
+    return { pos: i + 1, agentId: agentName(c), project: c.project, files: c.files,
+      reason: c.reason || (Number.isFinite(c.queueLen) && c.queueLen > 0 ? `คิวค้าง ${c.queueLen}` : ""),
+      blockedBy: (q.blockedBy || []).map(agentName), since: q.since };
+  }
+  const filesLabel = (files) => (!Array.isArray(files) || !files.length)
+    ? { txt: "⚙ ทั้งโปรเจค", whole: true } : { txt: files.join("  ·  "), whole: false };
+  function fmtDur(ms) {
+    if (!Number.isFinite(ms) || ms <= 0) return "หมดอายุ";
+    const s = Math.round(ms / 1000); if (s < 60) return s + "s";
+    const m = Math.floor(s / 60); return m < 60 ? m + "m " + (s % 60) + "s" : Math.floor(m / 60) + "h " + (m % 60) + "m";
+  }
+
+  // ── history (sparkline) ────────────────────────────
+  function pushHist(id, cpu, mem) {
+    let h = HISTORY.get(id);
+    if (!h) { h = { cpu: [], mem: [] }; HISTORY.set(id, h); }
+    h.cpu.push(Number.isFinite(cpu) ? cpu : 0);
+    h.mem.push(Number.isFinite(mem) ? mem : 0);
+    if (h.cpu.length > CAP) h.cpu.shift();
+    if (h.mem.length > CAP) h.mem.shift();
+    return h;
+  }
+
+  // ── render ─────────────────────────────────────────
+  function render(p) {
+    const liveDown = p.liveSource === "down" || p.degraded === true;
+    const agents = (liveDown ? [] : (Array.isArray(p.agents) ? p.agents : [])).map(normAgent);
+    const claims = (Array.isArray(p.claims) ? p.claims : []).map(normClaim);
+    const queue = (Array.isArray(p.queue) ? p.queue : []).map(normQueue);
+    const warnings = deriveWarnings(p);
+
+    // เพดานสเกล MEM (โตตามค่าที่เห็นจริง — กันกราฟตันเมื่อ mem > 1024) ผ่อนลงช้าๆ กันกระตุก
+    const maxMem = Math.max(256, ...agents.map((a) => a.mem || 0));
+    memMax = Math.max(memMax * 0.9, maxMem * 1.2);
+
+    // โปรเจค → severity แรงสุด (ไว้ flag การ์ด)
+    const sevByProj = new Map();
+    for (const w of warnings) {
+      if (!w.project) continue;
+      const k = String(w.project).trim().toLowerCase();
+      if (w.severity === "block" || !sevByProj.has(k)) sevByProj.set(k, w.severity === "block" ? "block" : "warn");
+    }
+
+    renderCards(agents, sevByProj, liveDown);
+    renderWarnings(warnings, agents.length);
+    renderClaims(claims, queue);
+
+    const blocks = warnings.filter((w) => w.severity === "block").length;
+    const working = agents.filter((a) => a.state !== "idle").length;
+    const timeouts = agents.filter((a) => a.timedOut).length;
+    $("meta").textContent =
+      `${agents.length} agents · ${working} working · ${timeouts} timeout · ` +
+      `${claims.length} claims · ${queue.length} queued · ${warnings.length} warn` +
+      (blocks ? ` (${blocks} block)` : "");
+  }
+
+  function renderCards(agents, sevByProj, liveDown) {
+    const empty = $("empty");
+    if (liveDown && !agents.length) {
+      empty.style.display = "block";
+      empty.innerHTML = "⚠️ live status เชื่อมต่อไม่ได้<br>— claims / warnings ด้านล่างยังทำงานปกติ —";
+    } else {
+      empty.style.display = agents.length ? "none" : "block";
+      empty.innerHTML = "ยังไม่มีข้อมูล agent<br>กำลังเชื่อมต่อ source…";
+    }
+    const seen = new Set();
+    const timeouts = [];
+    // working ก่อน idle, แล้วเรียงชื่อ — เด่นสุดอยู่บน
+    agents.sort((x, y) => ((y.state !== "idle") - (x.state !== "idle")) || x.id.localeCompare(y.id, "th"));
+    for (const a of agents) {
+      seen.add(a.id);
+      const h = pushHist(a.id, a.cpu, a.mem);
+      let c = cards.get(a.id);
+      if (!c) { c = buildCard(); cards.set(a.id, c); }
+      $("grid").appendChild(c.el);   // re-append ⇒ DOM ตามลำดับ sort
+      updateCard(c, a, h, sevByProj);
+      if (a.timedOut) timeouts.push(a.id);
+    }
+    for (const [id, c] of cards) if (!seen.has(id)) { c.el.remove(); cards.delete(id); HISTORY.delete(id); }
+
+    const bar = $("alertBar");
+    if (timeouts.length) { bar.classList.add("show");
+      $("alertText").textContent = "งาน timeout: " + timeouts.join(" · ") + " — ตรวจด่วน"; }
+    else bar.classList.remove("show");
+  }
+
+  function buildCard() {
+    const el = document.createElement("div");
+    el.className = "agent";
+    el.innerHTML = `
+      <div class="arow">
+        <span class="nm"></span>
+        <span class="alarm"><span class="led"></span>TIMEOUT</span>
+        <span class="badge"></span>
+      </div>
+      <div class="sub"></div>
+      <canvas class="spark" width="440" height="104"></canvas>
+      <div class="legend">
+        <span class="it"><span class="sw" style="background:var(--cpu)"></span>CPU <span class="val cpu">—</span></span>
+        <span class="it"><span class="sw" style="background:var(--mem)"></span>MEM <span class="val mem">—</span></span>
+      </div>
+      <div class="q"><span>คิว</span><span class="qbar"><span class="qfill"></span></span><span class="qn">0</span></div>`;
+    return { el, refs: {
+      nm: el.querySelector(".nm"), badge: el.querySelector(".badge"), sub: el.querySelector(".sub"),
+      canvas: el.querySelector("canvas"), cpu: el.querySelector(".val.cpu"), mem: el.querySelector(".val.mem"),
+      qfill: el.querySelector(".qfill"), qn: el.querySelector(".qn") } };
+  }
+
+  function updateCard(c, a, h, sevByProj) {
+    const r = c.refs;
+    r.nm.textContent = a.id;
+    r.badge.className = "badge " + a.state;
+    r.badge.textContent = a.state === "working" ? "● working" : a.state === "stuck" ? "■ stuck" : "○ idle";
+    c.el.classList.toggle("timeout", a.timedOut);
+    const sev = a.project ? sevByProj.get(String(a.project).trim().toLowerCase()) : null;
+    c.el.classList.toggle("flag-warn", sev === "warn");
+    c.el.classList.toggle("flag-block", sev === "block");
+
+    r.sub.innerHTML = a.project
+      ? `<span class="proj">⚙ ${esc(a.project)}</span> · ${esc(a.task || "")}`
+      : "— ว่าง —";
+    r.cpu.textContent = Number.isFinite(a.cpu) ? a.cpu.toFixed(0) + "%" : "—";
+    r.mem.textContent = Number.isFinite(a.mem) ? Math.round(a.mem) + " MB" : "—";
+
+    const q = a.queue || 0;
+    r.qn.textContent = q;
+    r.qfill.style.width = clamp(q / 9 * 100, 0, 100) + "%";
+    r.qfill.className = "qfill" + (q >= 6 ? " alert" : q >= 4 ? " warn" : "");
+    drawSpark(r.canvas, h);
+  }
+
+  // ── dual-line sparkline: CPU(0-100%) + MEM(0-memMax) ──
+  function drawSpark(canvas, h) {
+    const ctx = canvas.getContext("2d");
+    const W = canvas.width, H = canvas.height, pad = 4;
+    ctx.clearRect(0, 0, W, H);
+    ctx.strokeStyle = css("--line") || "rgba(255,255,255,0.08)";
+    ctx.lineWidth = 1;
+    for (let i = 1; i <= 3; i++) { const y = (H / 4) * i; ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+    const plot = (arr, color, max) => {
+      if (!arr.length) return;
+      ctx.strokeStyle = color; ctx.lineWidth = 1.8; ctx.lineJoin = "round"; ctx.beginPath();
+      const n = arr.length;
+      for (let i = 0; i < n; i++) {
+        const x = pad + (W - pad * 2) * (n === 1 ? 1 : i / (n - 1));
+        const y = H - pad - (H - pad * 2) * clamp(arr[i] / max, 0, 1);
+        i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+      }
+      ctx.stroke();
+      const lx = pad + (W - pad * 2), ly = H - pad - (H - pad * 2) * clamp(arr[n - 1] / max, 0, 1);
+      ctx.fillStyle = color; ctx.beginPath(); ctx.arc(lx, ly, 2.4, 0, 7); ctx.fill();
+    };
+    plot(h.mem, css("--mem") || "#b58cff", memMax);
+    plot(h.cpu, css("--cpu") || "#5ec8ff", 100);
+  }
+
+  function renderWarnings(warnings, nAgents) {
+    const wz = $("warnings"); wz.innerHTML = "";
+    const sorted = warnings.slice().sort((a, b) =>
+      (b.severity === "block") - (a.severity === "block") ||
+      String(a.project).localeCompare(String(b.project), "th"));
+    for (const w of sorted) {
+      const sev = w.severity === "block" ? "block" : "warn";
+      const ic = sev === "block" ? "🔒" : "⚠️";
+      const who = (w.agents || []).map(esc).join(" · ");
+      const verb = w.type === "file-overlap" ? "claim ทับไฟล์เดียวกัน → เข้าคิว" : "ทำโปรเจคเดียวกัน";
+      const fl = (w.files && w.files.length) ? `<div class="files">↳ ${w.files.map(esc).join("  ·  ")}</div>` : "";
+      const div = document.createElement("div");
+      div.className = "wz " + sev;
+      div.innerHTML = `<span class="ic">${ic}</span><span class="body">` +
+        `<div class="ty">${w.type === "file-overlap" ? "file-overlap" : "project-overlap"}</div>` +
+        `<span class="proj">${esc(w.project)}</span> — <span class="who">${who}</span> ${verb}${fl}` +
+        `</span><span class="sev">${sev}</span>`;
+      wz.appendChild(div);
+    }
+    $("clear").classList.toggle("show", nAgents > 0 && warnings.length === 0);
+  }
+
+  function renderClaims(claims, queue) {
+    const box = $("claims");
+    $("nClaims").textContent = claims.length;
+    $("nQueue").textContent = queue.length;
+    box.innerHTML = "";
+    if (!claims.length && !queue.length) {
+      box.innerHTML = `<div class="none-msg">ยังไม่มี claim — ทุก agent ว่างให้จอง</div>`;
+      return;
+    }
+    // active claims ก่อน (ใกล้หมดอายุขึ้นก่อน) แล้วต่อด้วย queued
+    claims.slice().sort((a, b) => (a.ts + a.ttlMs) - (b.ts + b.ttlMs)).forEach((c) => {
+      const fl = filesLabel(c.files);
+      const div = document.createElement("div");
+      div.className = "chip claim";
+      div.dataset.ts = c.ts; div.dataset.ttl = c.ttlMs;
+      div.innerHTML =
+        `<div class="top"><span class="who">${esc(c.agentId)}</span>` +
+          `<span class="pj">⚙ ${esc(c.project)}</span></div>` +
+        (c.reason ? `<div class="reason">${esc(c.reason)}</div>` : "") +
+        `<div class="fls${fl.whole ? " whole" : ""}">${esc(fl.txt)}</div>` +
+        `<div class="ttl"><span class="bar"><span class="fill"></span></span><span class="left">—</span></div>`;
+      box.appendChild(div);
+    });
+    queue.slice().sort((a, b) => (a.since || 0) - (b.since || 0)).forEach((q) => {
+      const fl = filesLabel(q.files);
+      const blk = (q.blockedBy && q.blockedBy.length)
+        ? `<div class="blk">⛔ บล็อกโดย ${q.blockedBy.map(esc).join(", ")}</div>` : "";
+      const div = document.createElement("div");
+      div.className = "chip queued";
+      div.innerHTML =
+        `<div class="top"><span class="qpos">#${q.pos}</span>` +
+          `<span class="who">${esc(q.agentId)}</span><span class="pj">⚙ ${esc(q.project)}</span></div>` +
+        (q.reason ? `<div class="reason">${esc(q.reason)}</div>` : "") +
+        (q.files !== undefined ? `<div class="fls${fl.whole ? " whole" : ""}">${esc(fl.txt)}</div>` : "") +
+        blk;
+      box.appendChild(div);
+    });
+    tickTtl();
+  }
+
+  // ── TTL countdown (ไม่ refetch — แค่อัปเดตเลขเวลา) ──
+  function tickTtl() {
+    const t = now();
+    document.querySelectorAll("#claims .chip.claim").forEach((el) => {
+      const ts = +el.dataset.ts, ttl = +el.dataset.ttl;
+      const fill = el.querySelector(".fill"), left = el.querySelector(".left");
+      if (!Number.isFinite(ts) || !Number.isFinite(ttl) || ttl <= 0) {
+        if (left) left.textContent = ""; if (fill) fill.style.width = "0%"; return;
+      }
+      const remain = ts + ttl - t, frac = clamp(remain / ttl, 0, 1);
+      fill.style.width = (frac * 100) + "%";
+      fill.className = "fill" + (frac < 0.2 ? " block" : frac < 0.5 ? " warn" : "");
+      left.textContent = fmtDur(remain);
+    });
+  }
+
+  // ── source indicator ──────────────────────────────
+  function setSrc(mode) {
+    if (mode === srcMode) return;
+    srcMode = mode;
+    const el = $("src");
+    el.className = "src " + mode;
+    el.textContent = mode === "demo" ? "● DEMO (รอ backend)"
+      : mode === "down" ? "● live: down" : "● live";
+  }
+
+  // ── DEMO fallback: cmd ล่ม/ยังไม่ลงดิสก์ ⇒ mock สดให้เห็นเลย์เอาต์ทันที ──
+  let demoTick = 0;
+  function mockPayload() {
+    demoTick++;
+    const t = demoTick, wave = (ph, amp, base) => clamp(base + Math.sin((t + ph) / 6) * amp + (Math.random() - 0.5) * 6, 2, 100);
+    const tsNow = Date.now();
+    return {
+      ts: tsNow, liveSource: "up",
+      agents: [
+        { name: "บาร์ท", state: "working", cpu: wave(0, 22, 48), memMB: 620 + Math.sin(t / 7) * 120, queueLen: 1, timedOut: false, project: "bagidea", task: "ออกแบบ flow overlay ใหม่" },
+        { name: "น้องไวท์", state: "working", cpu: wave(3, 30, 60), memMB: 880 + Math.sin(t / 5) * 160, queueLen: 2, timedOut: false, project: "bagidea", task: "ทำ panel agent-status" },
+        { name: "แบล็ค", state: "working", cpu: wave(6, 18, 40), memMB: 540 + Math.sin(t / 8) * 90, queueLen: 1, timedOut: false, project: "bagidea", task: "เขียน backend index.js" },
+        { name: "มิสเตอร์ N", state: "stuck", cpu: wave(9, 8, 14), memMB: 300 + Math.sin(t / 9) * 40, queueLen: 4, timedOut: true, project: "momo_project", task: "รอ API ค้างนาน" },
+        { name: "คุณหนึ่ง", state: "idle", cpu: 0, memMB: null, queueLen: 0, timedOut: false, project: null, task: null },
+      ],
+      claims: [
+        { id: "c1", agentId: "น้องไวท์", project: "bagidea", files: ["plugins/agent-status/panel.html"], reason: "ทำหน้าจอ panel", ts: tsNow - 5 * 60000, ttlMs: 30 * 60000 },
+        { id: "c2", agentId: "แบล็ค", project: "bagidea", files: ["plugins/agent-status/index.js"], reason: "ทำ backend", ts: tsNow - 20 * 60000, ttlMs: 30 * 60000 },
+        { id: "c3", agentId: "บาร์ท", project: "bagidea", files: [], reason: "ดูแลทั้งโปรเจค", ts: tsNow - 2 * 60000, ttlMs: 60 * 60000 },
+      ],
+      queue: [
+        { id: "q1", claim: { agentId: "มิสเตอร์ N", project: "bagidea", files: ["plugins/agent-status/index.js"], reason: "อยากแก้ backend ต่อ" }, blockedBy: ["แบล็ค"], since: tsNow - 90000 },
+      ],
+      warnings: [
+        { type: "project-overlap", project: "bagidea", agents: ["บาร์ท", "น้องไวท์", "แบล็ค"], files: [], severity: "warn" },
+        { type: "file-overlap", project: "bagidea", agents: ["แบล็ค", "มิสเตอร์ N"], files: ["plugins/agent-status/index.js"], severity: "block" },
+      ],
+    };
+  }
+
+  // ── pull ───────────────────────────────────────────
+  async function pull() {
+    try {
+      const r = await fetch(CMD_URL, { method: "POST",
+        headers: { "content-type": "application/json", "x-bagidea-ui": "1" },
+        body: JSON.stringify({ cmd: "status" }) });
+      const j = r.ok ? await r.json() : null;
+      // backend จริงต้องมี agents เป็น array — ไม่งั้นถือว่ายังไม่พร้อม ⇒ DEMO
+      if (!j || j.ok === false || !Array.isArray(j.agents)) throw new Error("no agents");
+      setSrc(j.liveSource === "down" ? "down" : "live");
+      skew = (j.ts || j.now || Date.now()) - Date.now();
+      lastOk = Date.now(); $("dot").classList.add("on");
+      render(j);
+    } catch (e) {
+      // backend ยังไม่พร้อม ⇒ โหมด DEMO (mock สด ให้ CEO เห็นเลย์เอาต์ทันที)
+      setSrc("demo");
+      skew = 0; lastOk = Date.now(); $("dot").classList.add("on");
+      render(mockPayload());
+    }
+  }
+
+  // ── WS: refresh ทันทีเมื่อ backend แจ้งเปลี่ยน ──
+  try {
+    const ws = new WebSocket("ws://127.0.0.1:8787/ws");
+    ws.onmessage = (m) => { try { const e = JSON.parse(m.data); if (e.replay) return;
+      if (e.type === "plugin.event" && e.plugin === "agent-status") pull();
+      else if (e.type === "agent.status") pull();
+    } catch {} };
+  } catch {}
+
+  // dead-source guard + TTL countdown เดินทุก 1s
+  setInterval(() => { if (Date.now() - lastOk > 5000) $("dot").classList.remove("on"); tickTtl(); }, 1000);
+
+  pull();
+  setInterval(pull, 1000);   // sparkline อัปเดตสดทุก ~1s
+</script>
+</body></html>

@@ -1,0 +1,438 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Workflow Builder — BagIdea Office</title>
+<style>
+  :root { --bg:#0a111d; --card:#0e1626; --line:rgba(255,255,255,.10); --accent:#5ec8ff; --text:#e8eef6; --dim:#90a0b6; }
+  * { box-sizing:border-box; }
+  html,body { margin:0; height:100%; background:var(--bg); color:var(--text);
+    font:13px/1.5 -apple-system,Segoe UI,Roboto,"Noto Sans Thai",sans-serif; overflow:hidden; user-select:none; }
+  ::-webkit-scrollbar { width:8px; height:8px; }
+  ::-webkit-scrollbar-track { background:transparent; }
+  ::-webkit-scrollbar-thumb { background:rgba(94,200,255,.35); border-radius:8px; }
+  ::-webkit-scrollbar-thumb:hover { background:rgba(94,200,255,.55); }
+  ::-webkit-scrollbar-corner { background:transparent; }
+  #bar { display:flex; align-items:center; gap:8px; padding:8px 12px; border-bottom:1px solid var(--line);
+    background:#0c1322; z-index:6; flex-wrap:wrap; }
+  #bar input#name { background:#0a1020; border:1px solid var(--line); color:var(--text); border-radius:8px;
+    padding:6px 10px; font-size:13px; min-width:170px; }
+  #bar input#name:disabled { opacity:.7; cursor:not-allowed; }
+  button { background:#13203a; color:var(--text); border:1px solid var(--line); border-radius:8px;
+    padding:6px 12px; cursor:pointer; font-size:12px; font-weight:600; }
+  button:hover { border-color:var(--accent); color:var(--accent); }
+  button:disabled { opacity:.4; cursor:not-allowed; }
+  button.primary { background:#0e4d8c; border-color:rgba(94,200,255,.5); }
+  button.primary:hover { background:#1466b3; color:#fff; }
+  .grow { flex:1; }
+  select#wfopen { background:#0a1020; color:var(--text); border:1px solid var(--line); border-radius:8px; padding:6px 8px; max-width:230px; }
+  /* tab strip */
+  #tabs { display:flex; gap:4px; padding:6px 10px 0; background:#0c1322; border-bottom:1px solid var(--line);
+    overflow-x:auto; align-items:flex-end; }
+  .tab { display:flex; align-items:center; gap:7px; padding:6px 10px; border:1px solid var(--line);
+    border-bottom:none; border-radius:9px 9px 0 0; background:#0a1020; color:var(--dim); cursor:pointer;
+    white-space:nowrap; font-size:12px; max-width:220px; }
+  .tab.active { background:var(--card); color:var(--text); border-color:rgba(94,200,255,.4); }
+  .tab .nm { overflow:hidden; text-overflow:ellipsis; }
+  .tab .ex { font-size:10px; color:#ffcf8a; }
+  .tab .cl { opacity:.6; padding:0 2px; border-radius:4px; }
+  .tab .cl:hover { opacity:1; color:#ff7b7b; background:rgba(255,120,120,.12); }
+  #tabs .newt { padding:6px 10px; color:var(--accent); }
+  #wrap { display:flex; height:calc(100% - 49px - 36px); }
+  #vp { position:relative; flex:1; overflow:hidden; cursor:grab; background:
+    radial-gradient(circle at 1px 1px, rgba(255,255,255,.05) 1px, transparent 0) 0 0/24px 24px; }
+  #vp.panning { cursor:grabbing; }
+  #world { position:absolute; left:0; top:0; width:1px; height:1px; transform-origin:0 0; }
+  #edges { position:absolute; left:0; top:0; width:1px; height:1px; overflow:visible; pointer-events:none; }
+  #edges path.edge { fill:none; stroke:#5ec8ff; stroke-width:2; opacity:.7; pointer-events:stroke; cursor:pointer; }
+  #edges path.edge:hover { stroke:#7fd4ff; opacity:1; stroke-width:3; }
+  #edges path.temp { fill:none; stroke:#7fd4ff; stroke-width:2; stroke-dasharray:5 4; opacity:.8; }
+  .node { position:absolute; width:230px; background:var(--card); border:1px solid var(--line);
+    border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,.35); }
+  .node .head { display:flex; align-items:center; gap:6px; padding:7px 9px; cursor:grab;
+    border-bottom:1px solid var(--line); border-radius:12px 12px 0 0; background:#101c30; }
+  .node .head select { background:#0a1020; color:var(--text); border:1px solid var(--line);
+    border-radius:6px; font-size:11px; padding:2px 4px; }
+  .node .head .x { margin-left:auto; cursor:pointer; color:var(--dim); padding:0 4px; }
+  .node .head .x:hover { color:#ff7b7b; }
+  .node textarea { width:100%; border:0; background:transparent; color:var(--text); resize:none;
+    min-height:50px; max-height:240px; padding:9px; font:13px/1.45 inherit; outline:none; user-select:text;
+    overflow:auto; }
+  .port { position:absolute; left:50%; transform:translateX(-50%); width:14px; height:14px; border-radius:50%;
+    background:#0a1020; border:2px solid var(--accent); cursor:crosshair; z-index:2; }
+  .port:hover { background:var(--accent); }
+  .port.in { top:-8px; } .port.out { bottom:-8px; }
+  #side { width:320px; border-left:1px solid var(--line); background:#0c1322; padding:12px;
+    overflow:hidden; display:flex; flex-direction:column; gap:8px; }
+  #side h3, #side .muted, #robadge, .acts { flex:none; }
+  #side h3 { margin:0 0 2px; font-size:13px; }
+  /* the plan/result takes the leftover height and scrolls inside itself, so long
+     output never pushes the Run/Skill buttons off the panel */
+  #plan { white-space:pre-wrap; word-break:break-word; font-size:12.5px; color:#d6e2f0; background:#0a1020;
+    border:1px solid var(--line); border-radius:10px; padding:11px; flex:1; min-height:80px; overflow:auto; }
+  #side .muted { color:var(--dim); font-size:11px; }
+  .acts { display:flex; gap:8px; margin-top:4px; } .acts button { flex:1; }
+  #robadge { font-size:11px; color:#ffcf8a; background:rgba(255,180,90,.1);
+    border:1px solid rgba(255,180,90,.3); border-radius:8px; padding:6px 9px; display:none; }
+  #robadge.show { display:block; }
+  #zoombar { position:absolute; right:12px; bottom:12px; display:flex; gap:6px; z-index:5; }
+  #zoombar button { padding:4px 10px; }
+  #tip { position:absolute; left:12px; bottom:12px; color:var(--dim); font-size:11px; opacity:.65; pointer-events:none; max-width:60%; }
+</style>
+</head>
+<body>
+  <div id="bar">
+    <input id="name" placeholder="ชื่อ workflow…" data-ph="ชื่อ workflow…" value="Workflow ใหม่">
+    <button onclick="newTab()" data-i18n="🆕 ใหม่">🆕 ใหม่</button>
+    <button onclick="addNode()">＋ Node</button>
+    <select id="wfopen" onchange="if(this.value){openTab(this.value);this.value='';}"><option value="">📂 เปิด…</option></select>
+    <span class="grow"></span>
+    <button id="delBtn" onclick="deleteCurrent()" data-i18n="🗑 ลบ">🗑 ลบ</button>
+    <button onclick="saveWf()" data-i18n="💾 บันทึก">💾 บันทึก</button>
+    <button class="primary" onclick="analyze()" data-i18n="🔍 วิเคราะห์">🔍 วิเคราะห์</button>
+  </div>
+  <div id="tabs"></div>
+  <div id="wrap">
+    <div id="vp">
+      <div id="world"><svg id="edges"><g id="edgeg"></g></svg></div>
+      <div id="zoombar">
+        <button onclick="zoomBy(0.83)">－</button>
+        <button onclick="fitView()" data-i18n="⤢ พอดี">⤢ พอดี</button>
+        <button onclick="zoomBy(1.2)">＋</button>
+      </div>
+      <div id="tip" data-i18n="ลากพื้นที่ว่าง = เลื่อน · ล้อเมาส์ = ซูม · ลากจากจุดล่าง (●) ของ node ไปจุดบนของอีก node = เชื่อม · แตกหลายเส้น = ทำขนาน · หลายเส้นเข้า node เดียว = รอให้ครบก่อน · คลิกเส้นเพื่อลบ">ลากพื้นที่ว่าง = เลื่อน · ล้อเมาส์ = ซูม · ลากจากจุดล่าง (●) ของ node ไปจุดบนของอีก node = เชื่อม · แตกหลายเส้น = ทำขนาน · หลายเส้นเข้า node เดียว = รอให้ครบก่อน · คลิกเส้นเพื่อลบ</div>
+    </div>
+    <div id="side">
+      <h3 data-i18n="🤖 แผนจาก Director">🤖 แผนจาก Director</h3>
+      <div id="robadge" data-i18h="📄 นี่คือ <b>ตัวอย่าง</b> (อ่านอย่างเดียว) — กด 💾 บันทึก เพื่อทำสำเนาที่แก้ไขได้">📄 นี่คือ <b>ตัวอย่าง</b> (อ่านอย่างเดียว) — กด 💾 บันทึก เพื่อทำสำเนาที่แก้ไขได้</div>
+      <div class="muted" data-i18h="กด “วิเคราะห์” แล้ว Director จะอ่าน workflow (รวมการแตกแขนง/รวม) แล้วบอกว่าต้องใช้ skill/tool/permission อะไร และมอบหมายให้ใคร">กด “วิเคราะห์” แล้ว Director จะอ่าน workflow (รวมการแตกแขนง/รวม) แล้วบอกว่าต้องใช้ skill/tool/permission อะไร และมอบหมายให้ใคร</div>
+      <div id="plan" data-i18n="— ยังไม่มีการวิเคราะห์ —">— ยังไม่มีการวิเคราะห์ —</div>
+      <div class="acts">
+        <button onclick="runWf()" data-i18n="▶️ รันเลย">▶️ รันเลย</button>
+        <button onclick="makeSkill()" data-i18n="🧠 สร้างเป็น Skill">🧠 สร้างเป็น Skill</button>
+      </div>
+      <div class="muted" data-i18h="“<b>รันเลย</b>” = ให้ทีมทำตาม workflow นี้เดี๋ยวนี้ แล้วรายงานผล · “<b>สร้างเป็น Skill</b>” = บันทึกเป็นสกิลที่นำไปติ๊กให้ agent ในหน้าตั้งค่า เพื่อเรียกใช้ซ้ำเมื่อไหร่ก็ได้ (หรือพิมพ์สั่ง agent ให้ “รัน &lt;ชื่อ workflow&gt;”)">“<b>รันเลย</b>” = ให้ทีมทำตาม workflow นี้เดี๋ยวนี้ แล้วรายงานผล · “<b>สร้างเป็น Skill</b>” = บันทึกเป็นสกิลที่นำไปติ๊กให้ agent ในหน้าตั้งค่า เพื่อเรียกใช้ซ้ำเมื่อไหร่ก็ได้ (หรือพิมพ์สั่ง agent ให้ “รัน &lt;ชื่อ workflow&gt;”)</div>
+    </div>
+  </div>
+<script src="/winlang.js"></script>
+<script>
+  // ---- i18n: Thai is the source. English offices use the TR map; OTHER
+  //      languages auto-translate via the daemon (/i18n, shared with the main
+  //      office) and fall back to English, then Thai, until a translation lands.
+  let LANG = "th";
+  const TR = {
+    "Workflow ใหม่":"New workflow", "ชื่อ workflow…":"Workflow name…",
+    "🆕 ใหม่":"🆕 New","＋ Node":"＋ Node","🗑 ลบ":"🗑 Delete","💾 บันทึก":"💾 Save","🔍 วิเคราะห์":"🔍 Analyze",
+    "⤢ พอดี":"⤢ Fit","▶️ รันเลย":"▶️ Run now","🧠 สร้างเป็น Skill":"🧠 Save as Skill",
+    "🤖 แผนจาก Director":"🤖 Director's plan","— ยังไม่มีการวิเคราะห์ —":"— no analysis yet —",
+    "⚡ เริ่มเมื่อ":"⚡ Trigger","⬇ ดึงข้อมูล":"⬇ Fetch","⚙ ทำงาน":"⚙ Action","◆ ตัดสินใจ":"◆ Decision","📤 ส่งผล":"📤 Output","📝 โน้ต":"📝 Note",
+    "พิมพ์สิ่งที่อยากให้ทำ…":"Describe what to do…",
+    "ลากพื้นที่ว่าง = เลื่อน · ล้อเมาส์ = ซูม · ลากจากจุดล่าง (●) ของ node ไปจุดบนของอีก node = เชื่อม · แตกหลายเส้น = ทำขนาน · หลายเส้นเข้า node เดียว = รอให้ครบก่อน · คลิกเส้นเพื่อลบ":
+      "Drag empty space = pan · wheel = zoom · drag a node's bottom dot (●) onto another's top = connect · many arrows out = parallel · many arrows in = wait for all · click an edge to delete",
+    "📄 นี่คือ <b>ตัวอย่าง</b> (อ่านอย่างเดียว) — กด 💾 บันทึก เพื่อทำสำเนาที่แก้ไขได้":
+      "📄 This is an <b>example</b> (read-only) — press 💾 Save to make an editable copy",
+    "กด “วิเคราะห์” แล้ว Director จะอ่าน workflow (รวมการแตกแขนง/รวม) แล้วบอกว่าต้องใช้ skill/tool/permission อะไร และมอบหมายให้ใคร":
+      "Press “Analyze” and the Director reads the workflow (branches & merges) and tells you which skills/tools/permissions it needs and who to assign.",
+    "“<b>รันเลย</b>” = ให้ทีมทำตาม workflow นี้เดี๋ยวนี้ แล้วรายงานผล · “<b>สร้างเป็น Skill</b>” = บันทึกเป็นสกิลที่นำไปติ๊กให้ agent ในหน้าตั้งค่า เพื่อเรียกใช้ซ้ำเมื่อไหร่ก็ได้ (หรือพิมพ์สั่ง agent ให้ “รัน <ชื่อ workflow>”)":
+      "“<b>Run now</b>” = the team does this workflow now and reports back · “<b>Save as Skill</b>” = save it as a skill you assign to an agent in Settings and reuse anytime (or just tell an agent to “run &lt;workflow name&gt;”).",
+    "เพิ่ม node ก่อนนะ":"Add a node first","⏳ Director กำลังวิเคราะห์…":"⏳ Director is analyzing…",
+    "วิเคราะห์ไม่สำเร็จ ลองใหม่":"Analysis failed — try again","⏳ ทีมกำลังทำงานตาม workflow…":"⏳ The team is running the workflow…",
+    "รันไม่สำเร็จ ลองใหม่":"Run failed — try again","💾 บันทึกแล้ว":"💾 Saved","💾 บันทึกเป็นสำเนาแล้ว":"💾 Saved as a copy","บันทึกไม่สำเร็จ":"Save failed","✅ ผลลัพธ์:":"✅ Result:",
+    "สร้าง skill ไม่สำเร็จ":"Couldn't create skill","ลบ workflow นี้?":"Delete this workflow?","(ไม่มีชื่อ)":"(untitled)",
+    "📂 เปิด…":"📂 Open…","ตัวอย่าง (อ่านอย่างเดียว)":"Examples (read-only)","ของฉัน":"Mine",
+    "เมื่อสั่งให้เริ่ม…":"When started…","เมื่อสั่งให้เริ่ม":"When started","หาข่าว A":"Find news A","หาข่าว B":"Find news B","รวมแล้วเขียนสรุป":"Merge & summarize",
+  };
+  let WL = null;  // WinLang instance for non-English langs (Thai → lang via /i18n)
+  // th → as-is · other langs → WinLang map first · English (and any gap) → TR.
+  function tr(s){
+    if (LANG==="th") return s;
+    if (WL && WL.map[s]!=null) return WL.map[s];
+    return TR[s] || s;
+  }
+  function applyLang(){
+    if (LANG==="th") return;
+    document.querySelectorAll("[data-i18n]").forEach(e=>{ const v=tr(e.getAttribute("data-i18n")); if(v!=null) e.textContent=v; });
+    document.querySelectorAll("[data-i18h]").forEach(e=>{ const v=tr(e.getAttribute("data-i18h")); if(v!=null) e.innerHTML=v; });
+    document.querySelectorAll("[data-ph]").forEach(e=>{ const v=tr(e.getAttribute("data-ph")); if(v!=null) e.placeholder=v; });
+  }
+  function rerenderAll(){ applyLang(); renderTabs(); if(active>=0){ clearCanvas(); nodes.forEach(renderNode); drawEdges(); } }
+  fetch("/registry").then(r=>r.json()).then(async reg=>{
+    const lang = reg.lang || "th";
+    if (lang === "th") return;
+    LANG = lang;
+    if (lang !== "en" && window.WinLang) WL = await WinLang.build(lang);
+    rerenderAll();
+    if (WL) WL.ensure(Object.keys(TR), rerenderAll);   // fill gaps via Gemini, re-render live
+  }).catch(()=>{});
+
+  const TYPES = [["trigger","⚡ เริ่มเมื่อ"],["fetch","⬇ ดึงข้อมูล"],["action","⚙ ทำงาน"],
+    ["decision","◆ ตัดสินใจ"],["output","📤 ส่งผล"],["note","📝 โน้ต"]];
+  const W = 230, NS = "http://www.w3.org/2000/svg";
+  // ---- open tabs: each holds a full workflow; the live globals mirror the active one
+  let tabs = [];          // {id,name,example,nodes,edges,pan,zoom}
+  let active = -1;
+  let nodes = [], edges = [], curId = "", isExample = false, seq = 1;
+  let pan = { x: 60, y: 40 }, zoom = 1;
+  const vp = document.getElementById("vp"), world = document.getElementById("world"),
+        edgeg = document.getElementById("edgeg"), nameInp = document.getElementById("name");
+
+  function applyTransform() { world.style.transform = `translate(${pan.x}px,${pan.y}px) scale(${zoom})`; }
+  function screenToWorld(sx, sy) { const r = vp.getBoundingClientRect();
+    return { x: (sx - r.left - pan.x) / zoom, y: (sy - r.top - pan.y) / zoom }; }
+  function nodeEl(id) { return world.querySelector('.node[data-id="'+id+'"]'); }
+  function nodeH(n) { const el = nodeEl(n.id); return el ? el.offsetHeight : 110; }
+  function outPort(n) { return { x: n.x + W / 2, y: n.y + nodeH(n) }; }
+  function inPort(n) { return { x: n.x + W / 2, y: n.y }; }
+
+  // ===== TABS =====
+  function stash() {
+    if (active < 0 || !tabs[active]) return;
+    tabs[active] = { id: curId, name: nameInp.value, example: isExample, nodes, edges, pan, zoom };
+  }
+  function clearCanvas() { world.querySelectorAll(".node").forEach(e=>e.remove()); edgeg.innerHTML=""; }
+  function activate(i) {
+    active = i; const t = tabs[i];
+    curId = t.id; isExample = !!t.example; nameInp.value = t.name;
+    nodes = t.nodes; edges = t.edges; pan = t.pan; zoom = t.zoom;
+    seq = Math.max(1, ...nodes.map(n=>parseInt(String(n.id).replace(/\D/g,""))||0)) + 1;
+    nameInp.disabled = isExample;
+    document.getElementById("delBtn").disabled = isExample || !curId;
+    document.getElementById("robadge").classList.toggle("show", isExample);
+    clearCanvas(); nodes.forEach(renderNode); drawEdges(); applyTransform(); renderTabs();
+    try { localStorage.setItem("lastWf", curId || ""); } catch {}
+  }
+  function renderTabs() {
+    const host = document.getElementById("tabs");
+    host.innerHTML = tabs.map((t,i)=>
+      `<div class="tab${i===active?" active":""}" onclick="switchTab(${i})">
+         ${t.example?'<span class="ex">📄</span>':''}<span class="nm">${(t.name||tr("(ไม่มีชื่อ)")).replace(/</g,"&lt;")}</span>
+         <span class="cl" onclick="event.stopPropagation();closeTab(${i})">✕</span></div>`).join("")
+      + `<div class="newt" onclick="newTab()">＋</div>`;
+  }
+  function switchTab(i){ if(i===active)return; stash(); activate(i); }
+  function newTab() {
+    stash();
+    tabs.push({ id:"", name:tr("Workflow ใหม่"), example:false, nodes:[], edges:[], pan:{x:60,y:40}, zoom:1 });
+    activate(tabs.length-1);
+    addNode("trigger", tr("เมื่อสั่งให้เริ่ม…"));
+  }
+  function openTab(id) {
+    const ex = tabs.findIndex(t=>t.id && t.id===id);
+    if (ex>=0) { switchTab(ex); return; }
+    fetch("/workflows/get?id="+encodeURIComponent(id)).then(r=>r.json()).then(w=>{
+      stash();
+      tabs.push({ id:w.id||id, name:w.name||"Workflow", example:String(id).startsWith("example-"),
+        nodes:w.nodes||[], edges:w.edges||[], pan:{x:60,y:40}, zoom:1 });
+      activate(tabs.length-1); fitView();
+    });
+  }
+  function closeTab(i) {
+    if (i===active) stash();
+    tabs.splice(i,1);
+    if (!tabs.length) { newTab(); return; }
+    if (active>=i) active = Math.max(0, active-(active===i?0:1));
+    if (active>=tabs.length) active = tabs.length-1;
+    activate(active);
+  }
+
+  // ===== nodes =====
+  function renderNode(n) {
+    const el = document.createElement("div");
+    el.className = "node"; el.dataset.id = n.id; el.style.left = n.x + "px"; el.style.top = n.y + "px";
+    const opts = TYPES.map(([v,l]) => `<option value="${v}"${v===n.type?" selected":""}>${tr(l)}</option>`).join("");
+    el.innerHTML = `<div class="port in"></div>` +
+      `<div class="head"><select>${opts}</select><span class="x">✕</span></div>` +
+      `<textarea placeholder="${tr("พิมพ์สิ่งที่อยากให้ทำ…")}">${(n.text||"").replace(/</g,"&lt;")}</textarea>` +
+      `<div class="port out"></div>`;
+    el.querySelector("select").onchange = (e) => { n.type = e.target.value; };
+    el.querySelector("textarea").oninput = (e) => { n.text = e.target.value; drawEdges(); };
+    el.querySelector(".x").onclick = (e) => { e.stopPropagation(); removeNode(n.id); };
+    dragNode(el, n);
+    el.querySelector(".port.out").addEventListener("mousedown", (e) => startLink(e, n.id));
+    world.appendChild(el);
+    return el;
+  }
+  function removeNode(id) {
+    edges = edges.filter((e) => e.from !== id && e.to !== id);
+    nodes = nodes.filter((n) => n.id !== id);
+    const el = nodeEl(id); if (el) el.remove(); drawEdges();
+  }
+  function addNode(type, text) {
+    const c = screenToWorld(vp.clientWidth/2, vp.clientHeight/2);
+    const n = { id: "n"+(seq++), type: type||"action", text: text||"",
+      x: Math.round(c.x - W/2 + (nodes.length%3)*20), y: Math.round(c.y - 40 + (nodes.length%5)*16) };
+    nodes.push(n); renderNode(n); drawEdges();
+  }
+  function dragNode(el, n) {
+    el.querySelector(".head").addEventListener("mousedown", (e) => {
+      if (e.target.tagName === "SELECT" || e.target.classList.contains("x")) return;
+      e.preventDefault(); e.stopPropagation();
+      const start = screenToWorld(e.clientX, e.clientY), ox = n.x, oy = n.y;
+      const move = (ev) => { const p = screenToWorld(ev.clientX, ev.clientY);
+        n.x = Math.round(ox + p.x - start.x); n.y = Math.round(oy + p.y - start.y);
+        el.style.left = n.x+"px"; el.style.top = n.y+"px"; drawEdges(); };
+      const up = () => { document.removeEventListener("mousemove",move); document.removeEventListener("mouseup",up); };
+      document.addEventListener("mousemove", move); document.addEventListener("mouseup", up);
+    });
+  }
+  // ===== edges =====
+  function path(p1, p2) { const dy = Math.max(40, Math.abs(p2.y - p1.y) * 0.5);
+    return `M ${p1.x} ${p1.y} C ${p1.x} ${p1.y+dy}, ${p2.x} ${p2.y-dy}, ${p2.x} ${p2.y}`; }
+  function drawEdges() {
+    edgeg.innerHTML = ""; const byId = {}; for (const n of nodes) byId[n.id] = n;
+    for (const e of edges) {
+      const a = byId[e.from], b = byId[e.to]; if (!a || !b) continue;
+      const pa = document.createElementNS(NS, "path");
+      pa.setAttribute("class", "edge"); pa.setAttribute("d", path(outPort(a), inPort(b)));
+      pa.addEventListener("click", () => { edges = edges.filter((x) => x !== e); drawEdges(); });
+      edgeg.appendChild(pa);
+    }
+  }
+  function startLink(e, fromId) {
+    e.preventDefault(); e.stopPropagation();
+    const from = nodes.find((n) => n.id === fromId);
+    const temp = document.createElementNS(NS, "path"); temp.setAttribute("class", "temp"); edgeg.appendChild(temp);
+    const move = (ev) => { const p = screenToWorld(ev.clientX, ev.clientY); temp.setAttribute("d", path(outPort(from), p)); };
+    const up = (ev) => {
+      document.removeEventListener("mousemove", move); document.removeEventListener("mouseup", up); temp.remove();
+      const tgt = ev.target.closest(".node");
+      if (tgt) { const toId = tgt.dataset.id;
+        if (toId !== fromId && !edges.some((x) => x.from===fromId && x.to===toId)) { edges.push({ from: fromId, to: toId }); drawEdges(); } }
+    };
+    document.addEventListener("mousemove", move); document.addEventListener("mouseup", up);
+  }
+  // ===== pan + zoom =====
+  vp.addEventListener("mousedown", (e) => {
+    if (e.target.closest(".node") || e.target.closest("#zoombar")) return;
+    vp.classList.add("panning"); const sx=e.clientX, sy=e.clientY, px=pan.x, py=pan.y;
+    const move = (ev) => { pan.x = px+ev.clientX-sx; pan.y = py+ev.clientY-sy; applyTransform(); };
+    const up = () => { vp.classList.remove("panning"); document.removeEventListener("mousemove",move); document.removeEventListener("mouseup",up); };
+    document.addEventListener("mousemove", move); document.addEventListener("mouseup", up);
+  });
+  vp.addEventListener("wheel", (e) => {
+    // Wheeling inside a node's text that can actually scroll = read the text,
+    // NOT zoom the canvas. Only zoom over empty canvas / non-scrolling text.
+    const ta = e.target.closest("textarea");
+    if (ta && ta.scrollHeight > ta.clientHeight + 1) return;
+    e.preventDefault();
+    const r = vp.getBoundingClientRect(), mx = e.clientX-r.left, my = e.clientY-r.top;
+    const f = e.deltaY<0?1.1:0.9, nz = Math.min(2, Math.max(0.3, zoom*f));
+    pan.x = mx-(mx-pan.x)*(nz/zoom); pan.y = my-(my-pan.y)*(nz/zoom); zoom = nz; applyTransform();
+  }, { passive: false });
+  function zoomBy(f) { const nz = Math.min(2, Math.max(0.3, zoom*f)); const mx=vp.clientWidth/2, my=vp.clientHeight/2;
+    pan.x = mx-(mx-pan.x)*(nz/zoom); pan.y = my-(my-pan.y)*(nz/zoom); zoom = nz; applyTransform(); }
+  function fitView() {
+    if (!nodes.length) { pan={x:60,y:40}; zoom=1; return applyTransform(); }
+    let minX=1e9,minY=1e9,maxX=-1e9,maxY=-1e9;
+    for (const n of nodes) { minX=Math.min(minX,n.x); minY=Math.min(minY,n.y); maxX=Math.max(maxX,n.x+W); maxY=Math.max(maxY,n.y+nodeH(n)); }
+    const pad=60, w=maxX-minX+pad*2, h=maxY-minY+pad*2;
+    zoom = Math.min(2, Math.max(0.3, Math.min(vp.clientWidth/w, vp.clientHeight/h)));
+    pan.x = -(minX-pad)*zoom + (vp.clientWidth - w*zoom)/2; pan.y = -(minY-pad)*zoom + (vp.clientHeight - h*zoom)/2;
+    applyTransform();
+  }
+  // ===== persistence =====
+  function saveWf() {
+    const body = { id: (isExample ? "" : curId) || undefined, name: nameInp.value || "Workflow", nodes, edges };
+    fetch("/workflows/save", { method:"POST", headers:{"content-type":"application/json"}, body:JSON.stringify(body) })
+      .then(r=>r.json()).then(j=>{
+        curId = j.id; isExample = false; nameInp.disabled = false;
+        document.getElementById("delBtn").disabled = false;
+        document.getElementById("robadge").classList.remove("show");
+        if (tabs[active]) { tabs[active].id = j.id; tabs[active].example = false; }
+        try { localStorage.setItem("lastWf", curId); } catch {}
+        renderTabs(); flash(isExample?"💾 บันทึกเป็นสำเนาแล้ว":"💾 บันทึกแล้ว"); loadList();
+      }).catch(()=>flash("บันทึกไม่สำเร็จ"));
+  }
+  function deleteCurrent() {
+    if (!curId || isExample) return;
+    if (!confirm(tr("ลบ workflow นี้?"))) return;
+    fetch("/workflows/delete", { method:"POST", headers:{"content-type":"application/json"}, body:JSON.stringify({ id: curId }) })
+      .then(()=>{ try{localStorage.removeItem("lastWf")}catch{}; closeTab(active); loadList(); });
+  }
+  function analyze() {
+    if (!nodes.length) return flash("เพิ่ม node ก่อนนะ");
+    const plan = document.getElementById("plan"); plan.textContent = tr("⏳ Director กำลังวิเคราะห์…");
+    fetch("/workflows/analyze", { method:"POST", headers:{"content-type":"application/json"},
+      body: JSON.stringify({ name: nameInp.value, nodes, edges }) })
+      .then(r=>r.json()).then(j=>{ plan.textContent = j.analysis || "—"; }).catch(()=>{ plan.textContent=tr("วิเคราะห์ไม่สำเร็จ ลองใหม่"); });
+  }
+  function runWf() {
+    if (!nodes.length) return flash("เพิ่ม node ก่อนนะ");
+    const plan = document.getElementById("plan"); plan.textContent = tr("⏳ ทีมกำลังทำงานตาม workflow…");
+    fetch("/workflows/run", { method:"POST", headers:{"content-type":"application/json"},
+      body: JSON.stringify({ name: nameInp.value, nodes, edges }) })
+      .then(r=>r.json()).then(j=>{ plan.textContent = tr("✅ ผลลัพธ์:")+"\n\n" + (j.result || "—"); }).catch(()=>{ plan.textContent=tr("รันไม่สำเร็จ ลองใหม่"); });
+  }
+  function makeSkill() {
+    if (!nodes.length) return flash("เพิ่ม node ก่อนนะ");
+    fetch("/workflows/skill", { method:"POST", headers:{"content-type":"application/json"},
+      body: JSON.stringify({ name: nameInp.value, nodes, edges }) })
+      .then(r=>r.json()).then(j=>{ const n=j.name||""; flash(LANG==="th" ? ("🧠 สร้างสกิล “"+n+"” แล้ว — ไปติ๊กให้ agent ในหน้าตั้งค่า") : ("🧠 Created skill “"+n+"” — assign it to an agent in Settings")); }).catch(()=>flash("สร้าง skill ไม่สำเร็จ"));
+  }
+  function loadList() {
+    fetch("/workflows").then(r=>r.json()).then(list=>{
+      const ex = list.filter(w=>w.example), us = list.filter(w=>!w.example);
+      // workflow id/name are user-controlled (via /workflows/save) — escape both
+      // before building the option markup so a quote/tag can't break out.
+      const esc = s=>String(s==null?"":s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+      const opt = w=>`<option value="${esc(w.id)}">${esc(w.name)} (${esc(w.nodes)})</option>`;
+      document.getElementById("wfopen").innerHTML = `<option value="">${tr("📂 เปิด…")}</option>`
+        + (ex.length?`<optgroup label="${tr("ตัวอย่าง (อ่านอย่างเดียว)")}">${ex.map(opt).join("")}</optgroup>`:"")
+        + (us.length?`<optgroup label="${tr("ของฉัน")}">${us.map(opt).join("")}</optgroup>`:"");
+    });
+  }
+  function flash(t){ t=tr(t); const p=document.getElementById("plan"); const o=p.textContent; p.textContent=t; setTimeout(()=>{ if(p.textContent===t)p.textContent=o; },1500); }
+
+  // ===== right-click anywhere on the canvas → "＋ Node" menu at the cursor =====
+  // Drops the new node right where you clicked (handy — no hunting for it).
+  let nodeMenuEl = null;
+  function closeNodeMenu() { if (nodeMenuEl) { nodeMenuEl.remove(); nodeMenuEl = null; } }
+  function addNodeAt(type, wx, wy) {
+    const n = { id: "n"+(seq++), type: type||"action", text: "",
+      x: Math.round(wx - W/2), y: Math.round(wy - 20) };
+    nodes.push(n); renderNode(n); drawEdges();
+  }
+  vp.addEventListener("contextmenu", (e) => {
+    // Right-click ANYWHERE on the canvas → the ＋ Node menu at the cursor. Works
+    // on examples too: adding a node + Save just forks an editable copy (same as
+    // editing the text does). This is our own menu — the native browser menu is
+    // disabled app-wide for pop-out windows.
+    e.preventDefault();
+    closeNodeMenu();
+    const wpos = screenToWorld(e.clientX, e.clientY);
+    const m = document.createElement("div");
+    m.id = "nodemenu";
+    m.style.cssText = "position:fixed;z-index:9999;background:#0e1626;border:1px solid #2a3a55;" +
+      "border-radius:10px;padding:5px;box-shadow:0 12px 40px rgba(0,0,0,.6);min-width:150px";
+    m.style.left = e.clientX + "px"; m.style.top = e.clientY + "px";
+    m.innerHTML = `<div style="font-size:11px;color:#8aa6c9;padding:4px 9px 6px">${tr("＋ Node")}</div>` +
+      TYPES.map(([v,l]) => `<div class="nmi" data-t="${v}" style="padding:7px 10px;border-radius:7px;` +
+        `cursor:pointer;font-size:12.5px;white-space:nowrap;color:#e8eef6">${tr(l)}</div>`).join("");
+    document.body.appendChild(m);
+    const r = m.getBoundingClientRect();   // keep it on-screen near edges
+    if (r.right > innerWidth) m.style.left = (innerWidth - r.width - 6) + "px";
+    if (r.bottom > innerHeight) m.style.top = (innerHeight - r.height - 6) + "px";
+    m.querySelectorAll(".nmi").forEach(it => {
+      it.onmouseenter = () => it.style.background = "rgba(94,200,255,.16)";
+      it.onmouseleave = () => it.style.background = "";
+      it.onclick = () => { addNodeAt(it.dataset.t, wpos.x, wpos.y); closeNodeMenu(); };
+    });
+    nodeMenuEl = m;
+  });
+  document.addEventListener("mousedown", (e) => { if (nodeMenuEl && !e.target.closest("#nodemenu")) closeNodeMenu(); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeNodeMenu(); });
+
+  // ===== boot =====
+  applyTransform(); loadList();
+  (function boot() {
+    let last=null; try { last = localStorage.getItem("lastWf"); } catch {}
+    fetch("/workflows").then(r=>r.json()).then(list=>{
+      if (last && list.some(w=>w.id===last)) openTab(last);
+      else if (list.length) openTab(list[0].id);   // first example
+      else newTab();
+    }).catch(newTab);
+  })();
+</script>
+</body>
+</html>

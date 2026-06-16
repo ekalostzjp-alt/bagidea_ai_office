@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BagIdea — Watch</title>
+<style>
+  :root { --bg:#0a0e18; --fg:#cfe6ff; --dim:#6f8099; --accent:#5ec8ff; }
+  * { box-sizing:border-box; }
+  html,body { margin:0; height:100%; background:var(--bg); color:var(--fg);
+    font:13px/1.5 "Cascadia Code","Consolas",ui-monospace,monospace; }
+  header { position:sticky; top:0; padding:10px 14px; background:#0c1322;
+    border-bottom:1px solid rgba(94,200,255,.18); display:flex; gap:8px; align-items:center; }
+  header b { color:var(--accent); }
+  header .live { margin-left:auto; font-size:11px; color:var(--dim); }
+  header .dot { width:8px; height:8px; border-radius:50%; background:#3a4a5e; display:inline-block; }
+  header .dot.on { background:#4ade80; box-shadow:0 0 8px #4ade80; }
+  #log { padding:10px 14px 24px; }
+  .row { padding:2px 0; white-space:pre-wrap; word-break:break-word; border-bottom:1px solid rgba(255,255,255,.03); }
+  .row .t { color:var(--dim); font-size:11px; margin-right:8px; }
+  .start { color:#9ad8ff; } .tool { color:#8fbf9f; } .out { color:var(--fg); }
+  .done { color:#4ade80; } .fail { color:#ff7a70; } .perm { color:#ffcf5e; }
+  ::-webkit-scrollbar { width:9px; height:9px; }
+  ::-webkit-scrollbar-thumb { background:rgba(110,180,255,.22); border-radius:6px; }
+  ::-webkit-scrollbar-thumb:hover { background:rgba(110,180,255,.45); }
+</style>
+</head>
+<body>
+<header>
+  <span class="dot" id="dot"></span>
+  <b>👁 <span id="who">office</span></b>
+  <span class="live">live · read-only (ไม่รบกวนการทำงาน)</span>
+</header>
+<div id="log"></div>
+<script>
+  const q = new URLSearchParams(location.search);
+  const agents = (q.get("agents") || "").split(",").map(s => s.trim()).filter(Boolean);
+  const set = new Set(agents);
+  document.getElementById("who").textContent = q.get("title") || agents.join(", ") || "office";
+  document.title = "👁 " + (q.get("title") || agents.join(", ") || "Watch");
+  const log = document.getElementById("log");
+  const dot = document.getElementById("dot");
+  const esc = (s) => String(s).replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+  function add(cls, html) {
+    const d = document.createElement("div");
+    d.className = "row " + cls;
+    const t = new Date().toLocaleTimeString();
+    d.innerHTML = '<span class="t">' + t + "</span>" + html;
+    log.appendChild(d);
+    while (log.children.length > 600) log.removeChild(log.firstChild);
+    log.scrollTop = log.scrollHeight;
+  }
+  // Only show events for the watched agent(s); empty set = the whole office.
+  const relevant = (ev) => set.size === 0 || set.has(ev.agent) || set.has(ev.sub);
+  function connect() {
+    const ws = new WebSocket("ws://" + location.host + "/ws");
+    ws.onopen = () => dot.classList.add("on");
+    ws.onclose = () => { dot.classList.remove("on"); setTimeout(connect, 1500); };
+    ws.onmessage = (e) => {
+      let ev; try { ev = JSON.parse(e.data); } catch { return; }
+      if (ev.replay || !relevant(ev)) return;
+      const who = ev.sub || ev.agent || "";
+      if (ev.type === "task.started") add("start", "▶ <b>" + esc(who) + "</b> " + esc((ev.title || "เริ่มงาน").slice(0, 160)));
+      else if (ev.type === "task.progress") add("tool", "  ⚙ " + esc(ev.tool || "…"));
+      else if (ev.type === "chat.message") add("out", esc((ev.text || "").slice(0, 4000)));
+      else if (ev.type === "task.completed") add("done", "✓ เสร็จ");
+      else if (ev.type === "task.failed") add("fail", "✗ ล้มเหลว");
+      else if (ev.type === "perm.requested") add("perm", "🔒 ขออนุญาตใช้ " + esc(ev.tool || ""));
+    };
+  }
+  connect();
+</script>
+</body>
+</html>

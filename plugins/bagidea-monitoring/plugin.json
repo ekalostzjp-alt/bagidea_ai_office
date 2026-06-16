@@ -1,0 +1,17 @@
+{
+  "id": "bagidea-monitoring",
+  "name": "📈 BagIdea Monitoring",
+  "version": "0.7.25",
+  "description": "แผงรวม real-time metrics ของ daemon + chat + agents (ผ่าน endpoint ที่มีอยู่) พร้อมรวม Daemon State Monitor (state drift) ไว้ในแผงเดียว. อ่านอย่างเดียว fail-open; ออกแบบเป็น data-source + hook ให้ alerts/anomaly เฟสถัดไปเสียบต่อได้.",
+  "panel": "panel.html",
+  "window": { "w": 920, "h": 720, "resizable": true },
+  "commands": [
+    { "name": "snapshot", "args": "", "desc": "snapshot รวมครบ: sources + metrics + alerts + anomalies + health (read-only)" },
+    { "name": "metrics", "args": "", "desc": "เฉพาะ flat metrics[] (เบากว่า snapshot)" },
+    { "name": "sources", "args": "", "desc": "รายชื่อ data source + hook ที่ลงทะเบียน (introspect)" },
+    { "name": "config", "args": "", "desc": "config ที่ใช้งานจริง (baseUrl/pollMs/endpoints) — แก้ได้ที่ data/config.json" }
+  ],
+  "needsKeys": [],
+  "enabled": true,
+  "core": true
+}

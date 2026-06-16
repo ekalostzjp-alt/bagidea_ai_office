@@ -1,0 +1,15 @@
+{
+  "id": "example-github-triage",
+  "name": "Example (intermediate): Triage GitHub issues",
+  "nodes": [
+    { "id": "n1", "type": "trigger", "text": "Every hour", "x": 160, "y": 40 },
+    { "id": "n2", "type": "fetch", "text": "Fetch open issues from the repo (use gh or the GitHub MCP)", "x": 160, "y": 200 },
+    { "id": "n3", "type": "decision", "text": "Any new issues since the last run?", "x": 160, "y": 370 },
+    { "id": "n4", "type": "action", "text": "Categorize (bug/feature/question) + set priority + draft a short reply", "x": 160, "y": 540 },
+    { "id": "n5", "type": "output", "text": "Summarize the list + send to chat/Telegram", "x": 160, "y": 720 }
+  ],
+  "edges": [
+    { "from": "n1", "to": "n2" }, { "from": "n2", "to": "n3" },
+    { "from": "n3", "to": "n4" }, { "from": "n4", "to": "n5" }
+  ]
+}

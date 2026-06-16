@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plugins — BagIdea Office</title>
+<meta name="description" content="Browse community plugins for BagIdea Office and install them into your living AI-agent wallpaper with one click — or publish your own.">
+<meta property="og:title" content="BagIdea Office — Plugins">
+<meta property="og:description" content="Community plugins for your living AI-agent office. One-click install.">
+<meta property="og:image" content="img/plugins.png">
+<link rel="icon" href="img/logo.png">
+<link rel="stylesheet" href="assets/site.css">
+<script defer src="assets/i18n.js"></script>
+<style>
+  .phwrap { max-width:1040px; }
+  .pgrid { display:flex; flex-wrap:wrap; gap:16px; margin-top:30px; justify-content:center; }
+  .pcard { flex:1 1 300px; max-width:calc(50% - 8px); background:var(--card,rgba(255,255,255,.03));
+    border:1px solid var(--line,rgba(255,255,255,.1)); border-radius:16px; padding:18px 20px; display:flex; flex-direction:column; }
+  @media(max-width:760px){ .pcard { max-width:100%; } }
+  .pcard h3 { margin:0; font-size:18px; }
+  .pcard .by { color:var(--dim); font-size:13px; margin:2px 0 0; }
+  .pcard .pdesc { color:var(--dim); font-size:14px; margin:11px 0 0; flex:1; line-height:1.6; }
+  .ptags { display:flex; gap:6px; flex-wrap:wrap; margin-top:12px; }
+  .ptag { font-size:11px; padding:2px 9px; border-radius:999px; border:1px solid var(--line,rgba(255,255,255,.12)); color:var(--dim); }
+  .ptag.official { color:var(--accent); border-color:rgba(94,200,255,.5); }
+  .prow { display:flex; gap:9px; align-items:center; margin-top:15px; flex-wrap:wrap; }
+  .prow .src { margin-left:auto; font-size:13px; color:var(--accent); text-decoration:none; }
+  .prow .src:hover { text-decoration:underline; }
+  .btn.sm { padding:9px 15px; font-size:14px; border-radius:10px; }
+  .safety { text-align:center; color:#e6b873; font-size:13.5px; margin-top:16px; }
+  .steps3 { display:flex; flex-wrap:wrap; gap:18px; margin-top:30px; justify-content:center; }
+  .step3 { flex:1 1 260px; max-width:340px; background:rgba(255,255,255,.03); border:1px solid var(--line,rgba(255,255,255,.1));
+    border-radius:14px; padding:18px 20px; }
+  .step3 h3 { margin:0 0 6px; font-size:16px; color:var(--accent); }
+  .step3 p { margin:0; color:var(--dim); font-size:14px; line-height:1.6; }
+  #ptoast { position:fixed; bottom:18px; left:50%; transform:translateX(-50%); background:#13203a;
+    border:1px solid var(--accent); border-radius:10px; padding:10px 18px; opacity:0; transition:opacity .2s; max-width:90%; z-index:50; }
+  #ptoast.show { opacity:1; }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="wrap">
+    <a class="brand" href="index.html"><img src="img/logo.png" alt="BagIdea Office logo"> BAG<span>IDEA</span> Office</a>
+    <div class="links">
+      <a class="nav-hide" href="index.html#features" data-i18n="nav_features">Features</a>
+      <a class="nav-hide" href="docs.html" data-i18n="nav_docs">Docs</a>
+      <a class="nav-hide" href="plugins.html" data-i18n="nav_plugins">Plugins</a>
+      <a class="nav-hide" href="index.html#install" data-i18n="nav_install">Install</a>
+      <a class="btn ghost" href="https://github.com/bagidea/bagidea-office" target="_blank" rel="noopener" data-i18n="cta_github">GitHub</a>
+      <div class="langpick"><button class="toggle">🌐 <span class="cur">EN</span></button></div>
+    </div>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="wrap">
+    <p class="eyebrow" data-i18n="nav_plugins">Plugins</p>
+    <h1 data-i18n="ph_title">Plugins for your office</h1>
+    <p class="sub" data-i18n="ph_sub">Browse community plugins and install them into your running office with one click — or publish your own for everyone.</p>
+    <p class="safety" data-i18n="ph_safety">⚠️ Plugins run real code on your machine. Install ones you trust; “Official” entries are maintained by the BagIdea team.</p>
+  </div>
+</header>
+
+<section>
+  <div class="wrap phwrap">
+    <p class="muted" id="pcount" style="text-align:center;font-size:14px"></p>
+    <div class="pgrid" id="pgrid">
+      <p class="muted" data-i18n="ph_loading">Loading plugins…</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap phwrap">
+    <p class="eyebrow" data-i18n="ph_submit_eyebrow">Contribute</p>
+    <h2 class="title" data-i18n="ph_submit_title">Publish your own plugin</h2>
+    <p class="lead" data-i18n="ph_submit_lead">Built something useful? A plugin can add a tool panel, agent commands, or whole new abilities — share it with every office.</p>
+    <div class="steps3">
+      <div class="step3"><h3 data-i18n="ph_s1_h">1 · Build it</h3><p data-i18n="ph_s1_p">Start from the official template — it has a panel, a route and an agent command already wired. Shape it into your own plugin.</p></div>
+      <div class="step3"><h3 data-i18n="ph_s2_h">2 · Publish to GitHub</h3><p data-i18n="ph_s2_p">Push your plugin to a public GitHub repo with a plugin.json manifest. That repo is what people install from.</p></div>
+      <div class="step3"><h3 data-i18n="ph_s3_h">3 · Open a PR</h3><p data-i18n="ph_s3_p">Add an entry to the catalog via a pull request. We review every submission, then it appears here.</p></div>
+    </div>
+    <div class="cta" style="margin-top:26px;justify-content:center">
+      <a class="btn primary" href="https://github.com/bagidea/bagidea-office/blob/main/docs/guide/plugin-hub.md" target="_blank" rel="noopener" data-i18n="ph_submit_cta">Read the submission guide →</a>
+      <a class="btn ghost" href="https://github.com/bagidea/bagidea-office-template" target="_blank" rel="noopener" data-i18n="ph_template_cta">Get the template →</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="col" style="max-width:280px">
+      <a class="brand" href="index.html" style="display:flex;align-items:center;gap:9px;font-weight:800;font-size:16px;color:var(--text)"><img src="img/logo.png" alt="" style="width:28px;height:28px;border-radius:6px"> BAG<span style="color:var(--accent)">IDEA</span> Office</a>
+      <p style="margin-top:12px" data-i18n="foot_tag">Your wallpaper goes to work.</p>
+      <p style="margin-top:8px;font-size:13px" data-i18n="foot_made">Built with Claude Code.</p>
+    </div>
+    <div class="col">
+      <h4 data-i18n="foot_product">Product</h4>
+      <a href="index.html#features" data-i18n="foot_features">Features</a>
+      <a href="index.html#install" data-i18n="foot_install">Install</a>
+      <a href="docs.html" data-i18n="foot_docs">Documentation</a>
+      <a href="plugins.html" data-i18n="nav_plugins">Plugins</a>
+    </div>
+    <div class="col">
+      <h4 data-i18n="foot_resources">Resources</h4>
+      <a href="https://github.com/bagidea/bagidea-office" target="_blank" rel="noopener" data-i18n="foot_github">GitHub repo</a>
+      <a href="https://github.com/bagidea/bagidea-office-template" target="_blank" rel="noopener" data-i18n="foot_template">Plugin template</a>
+      <a href="https://github.com/bagidea/bagidea-office/issues" target="_blank" rel="noopener" data-i18n="foot_issues">Report an issue</a>
+    </div>
+    <div class="col">
+      <h4 data-i18n="foot_company">Company</h4>
+      <a href="index.html#sponsors" data-i18n="foot_sponsors">Sponsors</a>
+      <a href="mailto:wrxbgid@warrix.co.th" data-i18n="foot_contact">Contact</a>
+    </div>
+  </div>
+  <div class="copyright" data-i18n="copyright">© 2026 BagIdea Innovation Co., Ltd. · MIT-licensed open source.</div>
+</footer>
+
+<div id="ptoast"></div>
+<a href="#" class="toplink" aria-label="Back to top">↑</a>
+<script>
+  // i18n.js is the canonical translator; it sets <html lang> on apply. We read
+  // that for the data-driven card text and re-render when the language changes.
+  const PH = {
+    en: { install:"⬇ Open in office", copy:"📋 Copy link", source:"View source ↗", official:"Official",
+          openNote:"If your office doesn't pop up, the link was copied — paste it in the office's 🧩 Plugins panel.",
+          empty:"No plugins in the catalog yet.", count:"plugins in the catalog", copied:"📋 Copied — paste it in the office's Plugins panel." },
+    th: { install:"⬇ เปิดในออฟฟิศ", copy:"📋 คัดลอกลิงก์", source:"ดูซอร์ส ↗", official:"ทางการ",
+          openNote:"ถ้าออฟฟิศไม่เด้งขึ้นมา ลิงก์ถูกคัดลอกไว้แล้ว — เอาไปวางในหน้า 🧩 Plugins ของออฟฟิศ",
+          empty:"ยังไม่มี plugin ในแคตตาล็อก", count:"plugin ในแคตตาล็อก", copied:"📋 คัดลอกแล้ว — วางในหน้า Plugins ของออฟฟิศได้เลย" },
+  };
+  let CATALOG = [];
+  const lang = () => (document.documentElement.lang === "th" ? "th" : "en");
+  const esc = (s) => String(s || "").replace(/[<>&"]/g, (c) => ({ "<":"&lt;", ">":"&gt;", "&":"&amp;", '"':"&quot;" }[c]));
+
+  function render() {
+    const L = lang(), u = PH[L] || PH.en;
+    const grid = document.getElementById("pgrid");
+    const count = document.getElementById("pcount");
+    if (!CATALOG.length) { grid.innerHTML = `<p class="muted">${u.empty}</p>`; count.textContent = ""; return; }
+    count.textContent = `${CATALOG.length} ${u.count}`;
+    grid.innerHTML = CATALOG.map((p) => {
+      const desc = (p[L] && p[L].desc) || (p.en && p.en.desc) || (p.th && p.th.desc) || "";
+      const tags = (p.tags || []).filter((t) => t !== "official").map((t) => `<span class="ptag">${esc(t)}</span>`).join("");
+      const official = p.official ? `<span class="ptag official">${u.official}</span>` : "";
+      return `<div class="pcard">
+        <h3>${esc(p.name)}</h3>
+        ${p.author?`<div class="by">@${esc(p.author)}</div>`:""}
+        <p class="pdesc">${esc(desc)}</p>
+        <div class="ptags">${official}${tags}</div>
+        <div class="prow">
+          <button class="btn primary sm" onclick="openInOffice('${esc(p.repo)}')">${u.install}</button>
+          <button class="btn ghost sm" onclick="copyLink('${esc(p.repo)}')">${u.copy}</button>
+          <a class="src" href="${esc(p.repo)}" target="_blank" rel="noopener">${u.source}</a>
+        </div></div>`;
+    }).join("");
+  }
+  function openInOffice(repo) {
+    // Hand the running office a deep link (works once the desktop shell registers
+    // the bagidea:// scheme); the office asks you to confirm before installing.
+    try { location.href = "bagidea://install?repo=" + encodeURIComponent(repo); } catch (e) {}
+    // Always copy as a fallback so it works even without the office open.
+    copyLink(repo, true);
+  }
+  function copyLink(repo, openCtx) {
+    const u = PH[lang()] || PH.en;
+    const done = () => toast(openCtx ? u.openNote : u.copied);
+    if (navigator.clipboard) navigator.clipboard.writeText(repo).then(done).catch(() => prompt(u.copy, repo));
+    else { prompt(u.copy, repo); }
+  }
+  let tt;
+  function toast(t) { const e = document.getElementById("ptoast"); e.textContent = t; e.classList.add("show"); clearTimeout(tt); tt = setTimeout(() => e.classList.remove("show"), 3600); }
+
+  // Re-render cards when i18n flips <html lang>.
+  new MutationObserver(render).observe(document.documentElement, { attributes: true, attributeFilter: ["lang"] });
+  fetch("plugins.json", { cache: "no-cache" }).then((r) => r.json()).then((d) => {
+    CATALOG = (d.plugins || []).filter((p) => p && p.id && p.repo);
+    render();
+  }).catch(() => render());
+
+  const topBtn = document.querySelector(".toplink");
+  addEventListener("scroll", () => topBtn.classList.toggle("show", scrollY > 600));
+</script>
+</body>
+</html>
