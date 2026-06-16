@@ -80,6 +80,18 @@ export PATH="$(pwd)/bin:$PATH"
 ```
 4. Run it: `shell/target/release/bagidea-office-shell`
 
+## What's new in this version
+
+This build tracks the upstream project [**BagIdea Office**](https://github.com/bagidea/bagidea-office) at **v0.7.25**. Headline additions beyond the original's earlier releases:
+
+- **🧩 Plugins Hub** — browse a live community catalog and install any plugin in one click; a plugin's web page can hand the install to your running office via a `bagidea://` link (the office **always asks you to confirm first** — no silent installs)
+- **⚡ Visual Workflow Builder** — wire multi-step automations on a node canvas (right-click to drop a node), run them live, or save one as a reusable agent skill — ships pre-translated in all 14 languages
+- **🖥️ Multi-monitor support** — real screen detection with a 🖥 Display picker; switching screens re-attaches the wallpaper automatically (no `bagidea restart`), plus a tray **Restart**
+- **🌐 Web install & official website** — one-shot `irm … | iex` installer and a browsable landing page + docs site under [`web/`](web/)
+- **📈 Monitoring & ops hardening** — a read-only monitoring plugin (rule-based alerts + EWMA anomaly detection, fail-open), per-agent **⏹ Force-stop**, a self-healing watchdog, and a token-saver TTS cache
+- **🌍 Fully pre-translated 14-language UI** — switching is instant and works even without a Gemini key, now covering the Workflow Builder and pop-out windows
+- **🛡️ Safer Settings** — confirm-before-delete on agents/projects and bulk-clear for team proposals
+
 ## What it does
 
 ### 🖥️ Live wallpaper world (Layer 1 — Godot 4)
