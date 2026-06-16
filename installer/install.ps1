@@ -263,9 +263,8 @@ Step 10 "Point the Claude hooks at this install"
 foreach ($cfg in @("$APP\.claude\settings.json", "$APP\workspace\.claude\settings.json")) {
   if (Test-Path $cfg) {
     $txt = Get-Content $cfg -Raw
-    $txt = [regex]::Replace($txt, '"command":\s*"[^"]*?([\w-]+\.ps1)"', { param($m)
-      '"command": "powershell -NoProfile -ExecutionPolicy Bypass -File \"' +
-      ($APP -replace '\\','\\') + '\\daemon\\' + $m.Groups[1].Value + '\""' })
+    $txt = [regex]::Replace($txt, '-File \\"[^"]*?([\w-]+)\.ps1\\"', { param($m)
+      '-File \"' + ($APP -replace '\\','\\') + '\\daemon\\' + $m.Groups[1].Value + '.ps1\"' })
     Set-Content $cfg $txt -Encoding utf8
   }
 }
