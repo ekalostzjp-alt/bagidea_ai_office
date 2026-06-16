@@ -66,6 +66,7 @@ echo "    + compiling the shell - more 'Compiling ...' lines; another few minute
 
 # ---- 4. Wiring --------------------------------------------------------------
 echo "[5/6] wiring Claude Code hooks for this machine…"
+mkdir -p "$ROOT/.claude" "$ROOT/workspace/.claude"
 cat > "$ROOT/.claude/settings.json" <<JSON
 {
   "hooks": {
