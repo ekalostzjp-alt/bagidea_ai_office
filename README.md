@@ -46,25 +46,39 @@ the office truly comes alive.
 
 > ✅ **Status: working product — Windows 11 (stable) + macOS 13+ (beta, new this release).** The full pipeline works end-to-end: wallpaper → daemon → real Claude Code sessions working *inside real project folders* → spatialized approvals → agent management UI → Telegram/Discord/LINE channels → CLI → self-updater. All visuals and sounds **ship in the repo** (free / CC0 art — see [Art assets](#art-assets)), so a fresh install and `bagidea update` carry the full look out of the box.
 
-## Table of Contents
+## Installation
 
-- [What it does](#what-it-does)
-- [Architecture](#architecture)
-- [Repository structure](#repository-structure)
-- [Requirements](#requirements)
-- [Installation](#installation)
-- [Art assets](#art-assets)
-- [Running the full stack](#running-the-full-stack)
-- [Using it](#using-it)
-- [The `bagidea` CLI](#the-bagidea-cli)
-- [HTTP API](#http-api)
-- [Event protocol (OEP)](#event-protocol-oep)
-- [Performance](#performance)
-- [User guides (ภาษาไทย)](#user-guides)
-- [Design documents](#design-documents)
-- [Roadmap](#roadmap)
+### One-shot installer (recommended)
 
----
+Run the one-shot installer to install dependencies, clone the app, build it, and add the bagidea command.
+
+**Windows:**
+```powershell
+irm https://raw.githubusercontent.com/ekalostzjp-alt/begidea_ai_office/main/installer/install.ps1 | iex
+```
+
+**macOS:**
+```bash
+curl -fsSL https://raw.githubusercontent.com/ekalostzjp-alt/begidea_ai_office/main/installer/install-mac.sh | bash
+```
+
+> First time only: open a **new** terminal, run `claude` once to log in to Claude,
+> then `bagidea start`. Safe to re-run — a re-run does a `git pull` and your data is kept.
+> Install didn't finish? See **[troubleshooting → install](docs/guide/troubleshooting.md#แก้ปัญหาการติดตั้ง)**
+> (covers winget, the C++ Build Tools / linker error, PATH, SmartScreen).
+
+### macOS installation
+
+1. Download **Godot 4.6.x macOS (universal)** and unzip `Godot.app` to `godot/bin-mac/Godot.app`.
+2. Run the build script to compile the shell, shim, and wire hooks:
+```bash
+./build-mac.sh
+```
+3. Add the `bagidea` command to your PATH:
+```bash
+export PATH="$(pwd)/bin:$PATH"
+```
+4. Run it: `shell/target/release/bagidea-office-shell`
 
 ## What it does
 
@@ -177,45 +191,5 @@ Served by the daemon at `http://127.0.0.1:8787/` — best experienced through th
 │  • /registry/* CRUD · /sessions/* · /discuss · /assist/prompt · /map/bg           │
 └───────────────────────────────────────────────────────────────────────────────────┘
 ```
-
-## Installation
-
-### One-shot installer (recommended)
-
-On a **bare machine** it installs everything needed — Git, Node LTS, Rust, the
-**Visual Studio C++ Build Tools** (the Rust linker, and the most common reason a
-build fails), Godot 4.6.3 and the Claude Code CLI — then clones the app to
-`%LOCALAPPDATA%\BagIdeaOffice` (Windows) or `~/BagIdeaOffice` (macOS), builds the
-shell, brands the window icon, wires the `bagidea` command into your PATH and
-creates a Start Menu shortcut or Bin link. Freshly installed tools are pulled
-onto the current PATH so it finishes in one pass:
-
-**Windows:**
-```powershell
-irm https://raw.githubusercontent.com/ekalostzjp-alt/begidea_ai_office/main/installer/install.ps1 | iex
-```
-
-**macOS:**
-```bash
-curl -fsSL https://raw.githubusercontent.com/ekalostzjp-alt/begidea_ai_office/main/installer/install-mac.sh | bash
-```
-
-> First time only: open a **new** terminal, run `claude` once to log in to Claude,
-> then `bagidea start`. Safe to re-run — a re-run does a `git pull` and your data is kept.
-> Install didn't finish? See **[troubleshooting → install](docs/guide/troubleshooting.md#แก้ปัญหาการติดตั้ง)**
-> (covers winget, the C++ Build Tools / linker error, PATH, SmartScreen).
-
-### macOS installation
-
-1. Download **Godot 4.6.x macOS (universal)** and unzip `Godot.app` to `godot/bin-mac/Godot.app`.
-2. Run the build script to compile the shell, shim, and wire hooks:
-```bash
-./build-mac.sh
-```
-3. Add the `bagidea` command to your PATH:
-```bash
-export PATH="$(pwd)/bin:$PATH"
-```
-4. Run it: `shell/target/release/bagidea-office-shell`
 
 *Built with [Claude Code](https://claude.com/claude-code) — design docs in the morning of day one, a full agent-office product by sunrise of day two.*
