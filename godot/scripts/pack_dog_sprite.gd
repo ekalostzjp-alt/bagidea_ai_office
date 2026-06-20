@@ -31,6 +31,8 @@ func _ready() -> void:
 					"frames": maxi(int(img.get_width() / 100.0), 1)}
 	pixel_size = 0.014
 	billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	# No cast shadow — a bobbing billboard's shadow makes the dog look airborne.
+	cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	shaded = true
 	alpha_cut = SpriteBase3D.ALPHA_CUT_DISCARD
 	texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST

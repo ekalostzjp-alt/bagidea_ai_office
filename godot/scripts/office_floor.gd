@@ -13,9 +13,9 @@ const DAY_KEYS := [
 	[5.6,  -40.0, 0.22, Color(0.5, 0.62, 1.0),  Color(0.06, 0.08, 0.18), 0.8],   # pre-dawn
 	[6.1,  -11.0, 0.9,  Color(1.0, 0.52, 0.32), Color(0.5, 0.38, 0.52),  1.05],  # sunrise — red sun, mauve sky
 	[7.0,  -20.0, 1.9,  Color(1.0, 0.76, 0.5),  Color(0.82, 0.68, 0.58), 1.45],  # golden morning
-	[9.0,  -38.0, 2.7,  Color(1.0, 0.9, 0.78),  Color(0.58, 0.77, 1.0),  1.85],  # bright morning
-	[12.0, -50.0, 3.1,  Color(1.0, 0.97, 0.9),  Color(0.5, 0.74, 1.0),   2.05],  # noon — white, overhead
-	[15.0, -45.0, 2.9,  Color(1.0, 0.93, 0.82), Color(0.55, 0.75, 1.0),  1.95],  # afternoon
+	[9.0,  -38.0, 2.5,  Color(1.0, 0.91, 0.78), Color(0.58, 0.77, 1.0),  1.6],   # bright morning
+	[12.0, -50.0, 2.7,  Color(1.0, 0.93, 0.8),  Color(0.55, 0.74, 1.0),  1.6],   # noon — warm daylight, not washed-out white (lower ambient = richer + visible shadows)
+	[15.0, -45.0, 2.6,  Color(1.0, 0.91, 0.78), Color(0.58, 0.76, 1.0),  1.6],   # afternoon
 	[17.0, -30.0, 2.3,  Color(1.0, 0.82, 0.56), Color(0.74, 0.72, 0.66), 1.6],   # late afternoon, warming
 	[18.0, -15.0, 1.5,  Color(1.0, 0.58, 0.32), Color(0.95, 0.55, 0.38), 1.2],   # golden hour
 	[18.4, -8.0,  0.7,  Color(1.0, 0.42, 0.3),  Color(0.45, 0.28, 0.42), 0.95],  # sunset — purple dusk

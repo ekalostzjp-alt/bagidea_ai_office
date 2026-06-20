@@ -31,6 +31,9 @@ func set_home(c: Vector3) -> void:
 func _ready() -> void:
 	layers = 2  # moving prop — off the static map render
 	billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	# A camera-facing billboard that bobs casts a drifting shadow that makes the
+	# dog look like it's floating — like every other character here, don't cast one.
+	cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	shaded = true
 	alpha_cut = SpriteBase3D.ALPHA_CUT_DISCARD
 	texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST

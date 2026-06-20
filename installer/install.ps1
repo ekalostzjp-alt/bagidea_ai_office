@@ -148,6 +148,43 @@ if (Have "claude") { Skip "already installed" }
 elseif (Have "npm") { Write-Host "      installing via npm (about a minute)..." -ForegroundColor DarkGray; npm install -g @anthropic-ai/claude-code; Sync-Path; Ok "installed - log in later by running: claude" }
 else { Warn "npm not on PATH yet - reopen a terminal and run: npm install -g @anthropic-ai/claude-code" }
 
+# ---- handy CLI tools the agents can use (optional, best-effort) ---------------
+# Each is installed via winget if missing; a failure is fine — agents just skip
+# whatever isn't present. These widen what the office can actually DO (media,
+# docs, data, GitHub) without writing any new code.
+Write-Host "`n  [+] Handy CLI tools for agents (gh, ffmpeg, yt-dlp, pandoc, jq, ImageMagick - optional)" -ForegroundColor Cyan
+foreach ($t in @(
+    @{ id = "GitHub.cli";               cmd = "gh" },
+    @{ id = "Gyan.FFmpeg";              cmd = "ffmpeg" },
+    @{ id = "yt-dlp.yt-dlp";            cmd = "yt-dlp" },
+    @{ id = "jqlang.jq";                cmd = "jq" },
+    @{ id = "JohnMacFarlane.Pandoc";    cmd = "pandoc" },
+    @{ id = "ImageMagick.ImageMagick";  cmd = "magick" }
+  )) {
+  if (Have $t.cmd) { Write-Host "      - $($t.cmd) already present" -ForegroundColor DarkGray; continue }
+  Write-Host "      - installing $($t.cmd)..." -ForegroundColor DarkGray
+  try { winget.exe install --id $t.id -e --silent --accept-package-agreements --accept-source-agreements | Out-Null } catch {}
+}
+Sync-Path
+
+# LibreOffice — lets agents READ + CONVERT Office files headlessly (xlsx/docx/pptx -> csv/pdf/...).
+# Detected by path (it doesn't put soffice on PATH itself), so we add its program dir too.
+$loDir = "C:\Program Files\LibreOffice\program"
+$loExe = Join-Path $loDir "soffice.exe"
+if (Test-Path $loExe) { Write-Host "      - LibreOffice already present" -ForegroundColor DarkGray }
+else {
+  Write-Host "      - installing LibreOffice (Office-file support, ~350 MB, optional)..." -ForegroundColor DarkGray
+  try { winget.exe install --id TheDocumentFoundation.LibreOffice -e --silent --accept-package-agreements --accept-source-agreements | Out-Null } catch {}
+}
+if (Test-Path $loExe) {
+  $up = [Environment]::GetEnvironmentVariable("Path", "User")
+  if ($up -notlike "*LibreOffice\program*") {
+    [Environment]::SetEnvironmentVariable("Path", "$up;$loDir", "User"); Sync-Path
+    Write-Host "      - added soffice to PATH" -ForegroundColor DarkGray
+  }
+}
+Ok "CLI tools step done (any that failed are optional)"
+
 # ---- stop a running instance first -------------------------------------------
 # A re-install while the office is open locks the very files we update + rebuild
 # + re-brand below (git reset, the shell exe, the branded BagIdeaOffice.exe) ->
@@ -282,6 +319,20 @@ if (Test-Path $exe) {
   $lnk.TargetPath = $exe; $lnk.WorkingDirectory = Split-Path $exe; $lnk.Save()
   Ok "created Start Menu shortcut"
 }
+
+# ---- launch with Windows (default ON for fresh installs) ---------------------
+# The same HKCU Run value the tray + `bagidea startup` toggle use. We set it only when
+# it's NOT already present, so re-running never clobbers a user's later "off" choice.
+# Fix: a fresh install used to not come back after a reboot.
+Step 12 "Launch automatically with Windows"
+if (Test-Path $exe) {
+  $runKey = "HKCU\Software\Microsoft\Windows\CurrentVersion\Run"
+  reg query $runKey /v BagIdeaOffice 2>$null | Out-Null
+  if ($LASTEXITCODE -ne 0) {
+    reg add $runKey /v BagIdeaOffice /t REG_SZ /d "$exe" /f | Out-Null
+    Ok "the office will start with Windows (turn off anytime: bagidea startup off)"
+  } else { Skip "auto-start already set" }
+} else { Skip "shell exe not built - skipped" }
 
 # ---- summary -----------------------------------------------------------------
 Write-Host ""

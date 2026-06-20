@@ -48,11 +48,12 @@ The office reads like a **dollhouse cross-section** (Spiritfarer ship / Octopath
 
 ### 2 · Executive Office — *orchestration made visible*
 - Main Agent at a large desk; **3 holo-screens** show its actual context: current plan (live), delegation graph (which agents own which subtask), and a world-map flair screen.
+- This is the Director's **private** workstation — it belongs to the Main Agent alone. Staff never sit here; they work the shared desks on the Operations Floor.
 - **Mission board behind the desk** mirrors the top-3 priority missions.
 - When orchestrating, the Main Agent stands at the delegation graph and "conducts" — lines animate from it to subagent portraits.
 
 ### 3 · Operations Floor — *the heartbeat*
-- Rows of desks; any agent doing generic task work sits here. Monitors render **real artifacts**: scrolling code, document text, terminal output (shader-faked at distance, real text when zoomed).
+- Rows of **shared** desks; any agent doing generic task work claims a free one here (the Director's Exec desk is off-limits). Monitors render **real artifacts**: scrolling code, document text, terminal output (shader-faked at distance, real text when zoomed).
 - **Task beams**: a thin light thread connects each busy desk up to its mission card in Mission Control — instantly answers "who's working on what."
 - Desk count grows with agent count (see 3.6 scaling).
 

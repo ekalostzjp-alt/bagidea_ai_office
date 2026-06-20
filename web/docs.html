@@ -45,8 +45,12 @@
     <a href="#voice" data-i18n="dn_voice">Voice & channels</a>
     <a href="#updates" data-i18n="dn_updates">Updates & start-up</a>
     <h4 data-i18n="dn_features">More</h4>
+    <a href="#brains" data-i18n="dn_brains">Swappable brains</a>
     <a href="#plugins" data-i18n="dn_plugins">Plugins & skills</a>
+    <a href="#workflow" data-i18n="dn_workflow">Workflow Builder</a>
     <a href="#lang" data-i18n="dn_lang">Languages</a>
+    <a href="#sponsors" data-i18n="dn_sponsors">Sponsoring</a>
+    <a href="https://github.com/bagidea/bagidea-office/blob/main/CHANGELOG.md" target="_blank" rel="noopener" data-i18n="dn_changelog">Changelog ↗</a>
     <h4 data-i18n="dn_cli">CLI</h4>
     <a href="#cli" data-i18n="dn_cli">CLI reference</a>
     <a href="#faq" data-i18n="dn_faq">FAQ</a>
@@ -91,6 +95,10 @@
     <h3 id="install-mac" data-i18n="d_install_mac_h">macOS — one-shot installer (beta)</h3>
     <p data-i18n="d_install_mac_p">Open Terminal and run the command below. It installs the dependencies (Git, Node, Rust, Godot, Claude Code CLI), clones the app to ~/BagIdeaOffice, builds the desktop shell and the wallpaper-embed shim, wires the Claude hooks, and sets up the bagidea command. Safe to re-run.</p>
     <pre><code>curl -fsSL https://raw.githubusercontent.com/ekalostzjp-alt/begidea_ai_office/main/installer/install-mac.sh | bash</code></pre>
+
+    <h3 id="install-mac" data-i18n="d_install_mac_h">macOS — one-shot installer (beta)</h3>
+    <p data-i18n="d_install_mac_p">Open Terminal and run the command below. It installs the dependencies (Git, Node, Rust, Godot, Claude Code CLI), clones the app to ~/BagIdeaOffice, builds the desktop shell and the wallpaper-embed shim, wires the Claude hooks, and sets up the bagidea command. Safe to re-run.</p>
+    <pre><code>curl -fsSL https://raw.githubusercontent.com/bagidea/bagidea-office/main/installer/install-mac.sh | bash</code></pre>
 
     <h3 id="install-manual" data-i18n="d_install_manual_h">Manual build</h3>
     <p data-i18n="d_install_manual_p">Clone the repository, point the Claude hook paths at your clone, then build the Rust shell:</p>
@@ -138,6 +146,21 @@ bagidea start   # launch the office</code></pre>
     <h3 id="updates" data-i18n="d_updates_h">Updates &amp; start-up</h3>
     <p data-i18n="d_updates_p">A VERSION file marks real releases: the office only shows the 🔄 update banner when main's version is newer than yours, so routine commits never nag you. Click the banner or run bagidea update to pull, rebuild and relaunch (your data is kept). Set it to launch with Windows from the tray, settings, or bagidea startup on.</p>
 
+    <h2 id="brains" data-i18n="d_brain_h">Swappable brains (any model)</h2>
+    <p data-i18n-html="d_brain_p">Run each agent on its own model. Claude Code stays the engine — only the brain behind it swaps, and it fails open to Claude, so nothing changes until you opt an agent in. <b>No LiteLLM or Python to install</b> — a translation proxy is built into the daemon.</p>
+    <ul>
+      <li data-i18n-html="d_brain_direct"><b>Direct (Anthropic-compatible):</b> Claude · GLM (Z.AI) · DeepSeek · Qwen (Alibaba) · MiniMax · Kimi (Moonshot)</li>
+      <li data-i18n-html="d_brain_proxy"><b>Via the built-in proxy (OpenAI-compatible):</b> OpenAI · Gemini · OpenRouter · NVIDIA · Groq · Cerebras · xAI (Grok) · Mistral · Together · Fireworks — plus <b>local Ollama / LM Studio with no API key</b>. Pickers fetch each provider's live model list.</li>
+      <li data-i18n-html="d_brain_custom"><b>Custom providers:</b> add your own — name + Base URL + key, Anthropic- or OpenAI-style (point it at a LiteLLM gateway if you run one).</li>
+    </ul>
+    <img src="img/brains-connect.png" alt="Connect providers in CONNECT → MODELS/PROVIDERS">
+    <img src="img/swappable-brains.png" alt="Pick a provider and model per agent, with a context-usage meter">
+    <p data-i18n-html="d_brain_setup"><b>Set it up:</b> ⚙ CONNECT → 🧠 MODELS/PROVIDERS → paste a key → Connect (✅). Then ✏️ edit an agent → 🧠 Brain → pick provider + model (a working default is auto-selected) → Save.</p>
+    <p data-i18n-html="d_brain_free"><b>Free to try, with limits:</b> NVIDIA build is free but rate-limited (~40 req/min); OpenRouter has free <code>:free</code> models that are daily-capped (use <code>vendor/model</code> ids); Gemini has a generous free quota; OpenAI Tier 1 (30k tokens/min) is small for heavy agent work.</p>
+    <p data-i18n-html="d_brain_compact"><b>Auto-compact + auto-new-thread — for every model.</b> Long chats never clog: before each turn the office measures the thread against the model's context window and, if it's filling up, summarizes it with Claude and continues on a fresh thread — recovering the same way if a backend rejects a too-big request. Continuity is preserved (the summary is Claude-written) and the view follows you to the new thread.</p>
+    <p data-i18n-html="d_brain_monitor"><b>Monitor it:</b> every message is tagged with its model, the thread bar shows a live context meter (e.g. <code>gpt-4o · 40k/128k</code>), the 🧠 BRAINS panel tracks every provider + agent, and STATS estimates per-provider spend.</p>
+    <img src="img/brains-chat.png" alt="Chat tagged with the model and a context-usage meter in the thread bar">
+
     <h2 id="plugins" data-i18n="d_plugins_h">Plugins, skills & tools</h2>
     <p data-i18n="d_plugins_p">Plugins extend the office for real — a folder with a manifest can add UI panels, HTTP routes, and commands agents can drive, with ctx access to the registry, feed, broadcasting and even running Claude turns. Two core plugins ship in the box (🎵 Music Player, 🧮 Calculator); install more from any GitHub repo. Start from the official template, or read the worked example repos.</p>
     <img src="img/plugins.png" alt="The plugins panel listing installed plugins, with install-from-GitHub">
@@ -145,9 +168,26 @@ bagidea start   # launch the office</code></pre>
     <pre><code>bagidea plugin install https://github.com/bagidea/bagidea-office-template</code></pre>
     <p data-i18n="d_skills_p">Every office ships with a library of builtin skills (deep research, office control, plugin building, code review, docs, debugging, data wrangling, project kickoff, diagrams) you can assign to any agent, plus Hermes-style skills the office learns automatically after real work. Add new raw capability via MCP servers.</p>
 
+    <h2 id="workflow" data-i18n="d_wf_h">Workflow Builder</h2>
+    <p data-i18n="d_wf_p">Plan work as plain-language nodes on a drag-drop canvas (⋯ menu → Workflow Builder) — each node is a step (trigger / fetch / action / decision / output) and the flow reads top to bottom. Press <b>Analyze</b> and the Director reads your plan and tells you which skills and tools it needs, what permissions or extra agents to add, and what's still undecided — so you can plan work even if you don't know how to instruct it, and let the team work out the execution.</p>
+    <ol>
+      <li data-i18n-html="d_wf_1"><b>Add nodes & write in plain language.</b> e.g. “every morning summarize AI news, then send it to Telegram”. Drag cards to order the flow top→bottom.</li>
+      <li data-i18n-html="d_wf_2"><b>Analyze.</b> The Director returns a plan: needed skills/tools, permissions/agents to set up, and open questions. (This release plans only — it doesn't auto-run yet.)</li>
+      <li data-i18n-html="d_wf_3"><b>Save & reuse.</b> Workflows are stored under workspace/workflows. Three example workflows ship in the box to learn from.</li>
+    </ol>
+
     <h2 id="lang" data-i18n="d_lang_h">Languages</h2>
     <p data-i18n="d_lang_p">The whole interface supports 14 languages. English is the default; pick another in settings and the office translates office-wide (and remembers your choice per machine). This website speaks the same 14 languages — use the picker in the top bar.</p>
     <p><span class="tag">en</span> <span class="tag">ไทย</span> <span class="tag">中文</span> <span class="tag">Español</span> <span class="tag">हिन्दी</span> <span class="tag">العربية</span> <span class="tag">Português</span> <span class="tag">Русский</span> <span class="tag">日本語</span> <span class="tag">Deutsch</span> <span class="tag">Français</span> <span class="tag">한국어</span> <span class="tag">Indonesia</span> <span class="tag">Tiếng Việt</span></p>
+
+    <h2 id="sponsors" data-i18n="d_sponsors_h">Sponsoring</h2>
+    <p data-i18n="d_sponsors_p">BagIdea Office is free and open source; sponsorship funds development, art licenses and cross-platform backends. It is a recurring monthly subscription run entirely by GitHub Sponsors (like a YouTube or Patreon membership) — secure payments, tax and payouts are GitHub's job, not ours. Four monthly tiers: 💛 Supporter ($5), 🥉 Bronze / Backer ($30), 🥈 Silver Partner ($300), 👑 Gold Partner ($3,000).</p>
+    <ol>
+      <li data-i18n-html="d_sponsors_1"><b>Choose a tier &amp; sponsor.</b> Use the “💖 Sponsor on GitHub” button on the site (or github.com/sponsors/bagidea), pick a monthly tier, and confirm — GitHub charges you each month until you cancel.</li>
+      <li data-i18n-html="d_sponsors_2"><b>Your logo &amp; link come from your GitHub profile — automatically.</b> Your avatar, display name and link are pulled straight from your GitHub account; there is nothing to send us. To control the link, set the <b>Website</b> field in your GitHub profile (Settings → Public profile). Sponsoring as a GitHub Organization shows your company logo and site.</li>
+      <li data-i18n-html="d_sponsors_3"><b>You appear within ~6 hours.</b> As long as you choose “Make my sponsorship public” at checkout, an automated workflow pulls the live list, maps each sponsor to a tier by amount, and updates the supporters wall on the website and the README — sorted by tier, amounts never shown. Private sponsors are respected and not listed.</li>
+    </ol>
+    <p class="muted" data-i18n="d_sponsors_note">Everyone joins through GitHub Sponsors. The only exceptions are featured partners added by hand (e.g. WARRIX, pinned first); Reuannamphung is shown as a courtesy until they move to GitHub Sponsors.</p>
 
     <h2 id="cli" data-i18n="d_cli_h">CLI reference</h2>
     <p data-i18n="d_cli_p">The installer puts bagidea on your PATH. It talks to the running office and can start it. A few highlights:</p>

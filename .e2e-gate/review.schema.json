@@ -1,0 +1,6 @@
+{ "type":"object","additionalProperties":false,
+  "required":["pass","reasons","files","fixes"],
+  "properties":{ "pass":{"type":"boolean"},
+    "reasons":{"type":"array","items":{"type":"string"}},
+    "files":{"type":"array","items":{"type":"string"}},
+    "fixes":{"type":"array","items":{"type":"string"}} } }

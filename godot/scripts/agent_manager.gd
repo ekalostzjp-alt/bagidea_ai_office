@@ -7,6 +7,7 @@ extends Node
 const AgentScript := preload("res://scripts/agent_sprite.gd")
 const Fx := preload("res://scripts/fx_factory.gd")
 const Burst := preload("res://scripts/burst_factory.gd")
+const Incident := preload("res://scripts/incident_factory.gd")
 
 @onready var world: Node3D = get_node("../World")
 
@@ -154,6 +155,9 @@ func _set_state(a: Dictionary, state: String) -> void:
 ## Occasional cinematic close-up on something interesting — rate-limited so
 ## the wallpaper keeps its calm diorama feel between shots.
 var _focus_cd := 0.0
+## Server-room blast is a rare treat — hard cooldown on top of its low roll so it
+## never clusters (was ~every 5 min; now 15-25 min apart at most).
+var _incident_cd := 0.0
 
 ## A guaranteed camera move for a fresh order: if the camera isn't already
 ## focusing, snap to `node` so the scene never sits dead-still while
@@ -201,15 +205,22 @@ func handle(evt: Dictionary) -> void:
 		_fetch_i18n()
 		return
 	if type == "ui.visibility":
-		# Office hidden: silence + crawl the renderer; agents keep WORKING.
+		# "Hide office" hides ONLY the overlay UI — the wallpaper is still the
+		# live desktop background, so it must keep rendering smoothly. Crawling
+		# to 2 FPS made the still-visible wallpaper stutter badly; keep it at the
+		# normal wallpaper rate. We only mute sound while hidden.
 		var on := bool(evt.get("on", true))
 		Sfx.hidden = not on
-		Engine.max_fps = 30 if on else 2
+		Engine.max_fps = 30
 		return
 	if type.begins_with("ui."):
 		return  # overlay debug beacons aren't agents
 	if type == "roster.sync":
 		Sfx.enabled = bool(evt.get("sound", true))
+		# Restore the saved atmosphere override — roster.sync is sent last on
+		# connect (authoritative), so this re-pins a manual morning/night choice
+		# that a renderer restart would otherwise drop back to real time.
+		get_node("../").apply_daylight_event({"hour": evt.get("daylight", "auto")})
 		_apply_roster(evt)
 		return
 	if type == "roster.removed":
@@ -840,7 +851,9 @@ func _finish(a: Dictionary, label: String) -> void:
 		_clear_status_later(a, 4.0)
 
 func _release_desk(a: Dictionary) -> void:
-	if a.desk != "" and not a.desk in ["ops_c", "ceo_desk"]:
+	# lead_desk is the Director's PRIVATE workstation — it must never re-enter the
+	# shared ops pool, or a non-main agent could later pop it and sit at main's desk.
+	if a.desk != "" and not a.desk in ["ops_c", "ceo_desk", "lead_desk"]:
 		desk_pool.append(a.desk)
 	a.desk = ""
 
@@ -1306,6 +1319,7 @@ func _end_supervision(id: String) -> void:
 func _idle_life_loop() -> void:
 	while is_inside_tree():
 		await get_tree().create_timer(randf_range(9.0, 16.0)).timeout
+		_reconcile_roster()  # issue #6 safety net — make sure every teammate has a live body
 		var pool: Array = []
 		for id in agents:
 			var a: Dictionary = agents[id]
@@ -1317,24 +1331,34 @@ func _idle_life_loop() -> void:
 		# Weighted so the CAFE gets as much love as the REC room, with the odd
 		# wander to the server/meeting rooms (rare). Beds are handled by naps.
 		var r := randf()
-		if r < 0.13:
+		if r < 0.11:
 			_act_tv(a)             # rec
-		elif r < 0.21:
+		elif r < 0.18:
 			_act_ball(a)           # rec
-		elif r < 0.29:
+		elif r < 0.25:
 			_act_pet(a)            # rec
-		elif r < 0.41:
+		elif r < 0.34:
 			_act_chase(a, pool)    # play tag with a friend (falls back if alone)
-		elif r < 0.49:
+		elif r < 0.40:
 			_act_dance(a)          # a little dance in the rec room
-		elif r < 0.55:
+		elif r < 0.45:
 			_act_stretch(a)        # quick stretch on the spot
+		elif r < 0.49:
+			_act_yawn(a)           # 🥱 sleepy beat on the spot
+		elif r < 0.53:
+			_act_idea(a)           # 💡 a lightbulb moment
+		elif r < 0.58:
+			_act_highfive(a, pool) # ✋ high-five a colleague
+		elif r < 0.62:
+			_act_selfie(a, pool)   # 📸 group selfie in the lobby
 		elif r < 0.80:
 			_act_cafe(a)           # cafe — still the biggest single share
 		elif r < 0.92:
 			_act_chat(a, pool)     # chat with a colleague (anywhere)
-		else:
+		elif r < 0.99 or Time.get_ticks_msec() / 1000.0 < _incident_cd:
 			_act_explore(a)        # a rare peek at the server / meeting room
+		else:
+			_act_server_incident(a)  # 🔥 rare server-room emergency — agent rushes to fix
 
 func _act_tv(a: Dictionary) -> void:
 	a.node.set_status(ui("ดูทีวี 📺"))
@@ -1421,6 +1445,71 @@ func _act_explore(a: Dictionary) -> void:
 	if a.state == "idle":
 		a.node.set_status("")
 
+## A sleepy little yawn on the spot — no walking, pure charm.
+func _act_yawn(a: Dictionary) -> void:
+	if not is_instance_valid(a.node):
+		return
+	a.node.set_status(ui(["หาว... 🥱", "ง่วงจัง 😴", "ขอบิดขี้เกียจแป๊บ 🥱"].pick_random()))
+	Fx.spawn(a.node, "sparkle", Vector3(0, 1.2, 0), 0.02)
+	_clear_status_later(a, 4.0)
+
+## A lightbulb moment — an idea strikes.
+func _act_idea(a: Dictionary) -> void:
+	if not is_instance_valid(a.node):
+		return
+	a.node.set_status(ui(["ไอเดียเด็ด! 💡", "นึกออกแล้ว! 💡", "เจอทางแล้ว ✨"].pick_random()))
+	Fx.spawn(a.node, "light_burst", Vector3(0, 1.3, 0), 0.03)
+	Sfx.play("blip2")
+	_maybe_focus(a.node, 0.5, 5.0)
+	_clear_status_later(a, 5.0)
+
+## Two idle agents meet up for a high-five.
+func _act_highfive(a: Dictionary, pool: Array) -> void:
+	var others := pool.filter(func(o): return o.id != a.id and o.state == "idle")
+	if others.is_empty():
+		_act_yawn(a)
+		return
+	var b: Dictionary = others.pick_random()
+	a.node.set_status(ui("ไฮไฟว์! ✋"))
+	b.node.set_status(ui("ไฮไฟว์! ✋"))
+	var d: float = a.node.walk_to(world.path_between(a.node.position,
+		b.node.position + Vector3(0.6, 0, 0.3)))
+	await get_tree().create_timer(d + 0.2).timeout
+	if is_instance_valid(a.node):
+		Fx.spawn(a.node, "sparkle", Vector3(0, 1.2, 0), 0.03)
+	if is_instance_valid(b.node):
+		Fx.spawn(b.node, "sparkle", Vector3(0, 1.2, 0), 0.03)
+	Sfx.play("blip2")
+	_maybe_focus(a.node, 0.6, 5.0)
+	_clear_status_later(a, 5.0)
+	_clear_status_later(b, 5.0)
+
+## A quick group selfie in the lobby — needs a small crew.
+func _act_selfie(a: Dictionary, pool: Array) -> void:
+	var others := pool.filter(func(o): return o.id != a.id and o.state == "idle")
+	if others.size() < 2 or not world.WP.has("lobby_c"):
+		_act_idea(a)
+		return
+	var crew: Array = [a, others[0], others[1]]
+	var spot: Vector3 = world.WP["lobby_c"]
+	var offs := [Vector3(-0.7, 0, 0.0), Vector3(0, 0, 0.35), Vector3(0.7, 0, 0.0)]
+	var dmax := 0.0
+	for i in crew.size():
+		var m: Dictionary = crew[i]
+		if not is_instance_valid(m.node):
+			continue
+		m.node.set_status(ui("ยิ้ม! 📸"))
+		var dd: float = m.node.walk_to(world.path_to(m.node.position, "lobby_c") + [spot + offs[i]])
+		dmax = maxf(dmax, dd)
+	await get_tree().create_timer(dmax + 0.4).timeout
+	for m in crew:
+		if is_instance_valid(m.node):
+			Fx.spawn(m.node, "sparkle", Vector3(0, 1.3, 0), 0.03)
+	Sfx.play("tada")
+	_maybe_focus(a.node, 0.8, 6.0)
+	for m in crew:
+		_clear_status_later(m, 5.0)
+
 ## Keep a free target point inside the office (the chase dash could otherwise
 ## fling an agent through a wall and out onto the lawn).
 func _clamp_floor(p: Vector3) -> Vector3:
@@ -1435,22 +1524,102 @@ func _act_chase(a: Dictionary, pool: Array) -> void:
 	if others.is_empty():
 		return
 	var b: Dictionary = others.pick_random()
-	a.node.set_status(ui("ไล่จับเพื่อน 🏃"))
-	b.node.set_status(ui("หนีสุดชีวิต 😆"))
-	for _i in range(2):
+	if a.node.has_method("set_hurry"): a.node.set_hurry(true)
+	if b.node.has_method("set_hurry"): b.node.set_hurry(true)
+	# A beat of anticipation — they spot each other, THEN bolt. (Re-targeting on a
+	# fixed short timer used to kill each walk mid-stride → a jittery shuffle.)
+	a.node.set_status(ui("เห็นแล้วนะ 👀"))
+	b.node.set_status(ui("จะหนีแล้ว! 😆"))
+	_maybe_focus(a.node, 0.85, 9.0)
+	await get_tree().create_timer(0.6).timeout
+	if a.state == "idle" and b.state == "idle" and is_instance_valid(a.node) and is_instance_valid(b.node):
+		a.node.set_status(ui("ไล่จับเพื่อน 🏃💨"))
+		b.node.set_status(ui("หนีสุดชีวิต 😆"))
+	for i in range(5):
 		if a.state != "idle" or b.state != "idle" or not is_instance_valid(a.node) or not is_instance_valid(b.node):
 			break
+		# Runner bolts to a FAR spot — across rooms, through doorways (A* routed).
 		var away: Vector3 = b.node.position - a.node.position
-		away = (Vector3(1, 0, 0) if away.length() < 0.1 else away.normalized())
-		var flee: Vector3 = _clamp_floor(b.node.position + away * randf_range(2.2, 3.4))
+		away = (Vector3(randf_range(-1, 1), 0, randf_range(-1, 1)).normalized()
+			if away.length() < 0.1 else away.normalized())
+		var flee: Vector3 = _clamp_floor(b.node.position + away * randf_range(7.0, 11.0))
 		var db: float = b.node.walk_to(world.path_between(b.node.position, flee))
+		# Chaser homes on the runner's current position — closing the gap.
 		var da: float = a.node.walk_to(world.path_between(a.node.position, b.node.position))
-		await get_tree().create_timer(max(da, db) + 0.15).timeout
-	if a.state == "idle" and is_instance_valid(a.node):
-		_fx(a, "sparkle")
-		_maybe_focus(a.node, 0.7, 6.0)
+		if i % 2 == 0: _fx(b, "music")   # comic puffs as they tear around
+		# Let the dash actually PLAY OUT before re-targeting — re-home at ~80% of
+		# the longer leg so it stays a continuous sprint, never a twitch-in-place.
+		await get_tree().create_timer(clampf(max(da, db) * 0.8, 0.9, 2.2)).timeout
+	# Caught! a little burst of fun.
+	if is_instance_valid(a.node) and is_instance_valid(b.node):
+		_fx(a, "sparkle"); _fx(b, "sparkle")
+		Burst.spawn(world, b.node.position)
+		Sfx.play("blip")
+	if a.node.has_method("set_hurry"): a.node.set_hurry(false)
+	if b.node.has_method("set_hurry"): b.node.set_hurry(false)
 	_clear_status_later(a, 5.0)
 	_clear_status_later(b, 5.0)
+
+## 🔥 The server room blows / catches fire and an agent SPRINTS over to put it
+## out — a rare comedic emergency that finally gives the server room a purpose.
+func _act_server_incident(a: Dictionary) -> void:
+	if not is_instance_valid(world) or not world.WP.has("server_c"):
+		_act_explore(a)
+		return
+	var pos: Vector3 = world.WP["server_c"]
+	_incident_cd = Time.get_ticks_msec() / 1000.0 + randf_range(900.0, 1500.0)  # 15-25 min until the next one
+	# Point the camera at the server room FIRST — the blast used to fire wherever
+	# the camera happened NOT to be, so it was easy to miss. A temp marker gives
+	# the rig something to frame; we free it when the drama ends.
+	var mark := Node3D.new()
+	world.add_child(mark)
+	mark.position = pos + Vector3(0, 1.0, 0)
+	var rig := get_node_or_null("../CameraRig")
+	if rig and rig.has_method("focus_on"):
+		rig.focus_on(mark, 12.0)
+		_focus_cd = Time.get_ticks_msec() / 1000.0 + 18.0  # don't let ambient focus steal it
+	await get_tree().create_timer(0.9).timeout  # camera settles, tension builds
+	if not is_instance_valid(world): return
+	# 💥💥 two blasts, then it catches fire — distinct explosion SFX each.
+	Incident.boom(world, pos, 1.35)
+	Sfx.play("boom")
+	await get_tree().create_timer(0.7).timeout
+	if is_instance_valid(world):
+		Incident.boom(world, pos + Vector3(randf_range(-1.2, 1.2), 0, randf_range(-1.0, 1.0)), 1.0)
+		Sfx.play("boom2")
+	await get_tree().create_timer(0.35).timeout
+	var fire: Node3D = Incident.ignite(world, pos) if is_instance_valid(world) else null
+	Sfx.loop("fire")   # crackle WHILE it burns — stopped at every exit below
+	if not is_instance_valid(a.node):
+		if fire: Incident.put_out(world, fire)
+		Sfx.stop_loop("fire")
+		if is_instance_valid(mark): mark.queue_free()
+		return
+	a.node.set_status(ui("เซิร์ฟเวอร์ระเบิด! 🔥"))
+	if a.node.has_method("set_hurry"): a.node.set_hurry(true)
+	var d: float = a.node.walk_to(world.path_between(a.node.position, pos + Vector3(1.5, 0, 1.3)), a.node.DIR_UP)
+	await get_tree().create_timer(d + 0.1).timeout
+	# Pulled to real work (or despawned) mid-rush? Just tidy up.
+	if a.state != "idle" or not is_instance_valid(a.node):
+		if fire: Incident.put_out(world, fire)
+		Sfx.stop_loop("fire")
+		if is_instance_valid(mark): mark.queue_free()
+		return
+	a.node.set_status(ui("กำลังกู้เซิร์ฟเวอร์ 🧯"))
+	for _i in range(3):
+		if a.state != "idle" or not is_instance_valid(a.node):
+			break
+		_fx(a, "sparkle")
+		await get_tree().create_timer(1.0).timeout
+	if fire: Incident.put_out(world, fire)
+	Sfx.stop_loop("fire")
+	if is_instance_valid(mark): mark.queue_free()
+	if is_instance_valid(a.node):
+		if a.node.has_method("set_hurry"): a.node.set_hurry(false)
+		a.node.set_status(ui("กู้เซิร์ฟเวอร์สำเร็จ ✓"))
+		_fx(a, "check")
+		Sfx.play("chime")
+	_clear_status_later(a, 5.0)
 
 ## A little spot-dance in the rec room.
 func _act_dance(a: Dictionary) -> void:

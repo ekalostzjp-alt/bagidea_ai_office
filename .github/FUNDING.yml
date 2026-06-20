@@ -1,0 +1,8 @@
+# Shows the "💖 Sponsor" button on the GitHub repo.
+# `github:` activates once GitHub Sponsors is enabled for this account
+# (Settings → enroll at https://github.com/sponsors). Add other platforms
+# below if you ever use them (open_collective, ko_fi, polar, custom URL).
+github: [bagidea]
+# open_collective: bagidea-office
+# ko_fi: bagidea
+# custom: ["https://bagidea.com/sponsor"]

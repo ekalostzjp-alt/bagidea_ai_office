@@ -39,6 +39,7 @@ func _ready() -> void:
 			_anims[spec[0]] = {"tex": ImageTexture.create_from_image(img), "frames": int(spec[2])}
 	pixel_size = 0.02
 	billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF  # billboards don't cast (looks like floating)
 	shaded = true
 	alpha_cut = SpriteBase3D.ALPHA_CUT_DISCARD
 	texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST

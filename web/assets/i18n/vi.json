@@ -126,6 +126,7 @@
   "dn_lang": "Ngôn ngữ",
   "dn_cli": "Tài liệu tham khảo CLI",
   "dn_faq": "Câu hỏi thường gặp",
+  "dn_changelog": "Nhật ký thay đổi ↗",
   "d_intro_h": "Giới thiệu",
   "d_intro_p1": "BagIdea Office là một văn phòng AI agent sống động chạy như hình nền màn hình Windows của bạn. Mỗi AI agent trên máy của bạn trở thành một nhân viên pixel-art trong văn phòng HD-2D: họ đi đến bàn làm việc khi công việc thực bắt đầu, tập trung tại Bảo mật để xin phép, tổ chức cuộc họp, học kỹ năng, và ánh đèn theo giờ địa phương thực của bạn.",
   "d_intro_p2": "Đây không phải là bảng điều khiển cũng không phải cửa sổ trò chuyện — đó là một thế giới hiển thị trạng thái thực của các phiên Claude Code, các lượt chạy agent không có giao diện và các tập lệnh tùy chỉnh của bạn dưới dạng các nhân vật sống, phía sau các biểu tượng màn hình của bạn.",
@@ -179,5 +180,10 @@
   "d_faq_q3": "Những nền tảng nào được hỗ trợ?",
   "d_faq_a3": "Windows 11 hiện tại. Các backend hình nền Linux và macOS đang trong lộ trình phát triển.",
   "d_faq_q4": "Tôi có thể tự xây dựng plugin không?",
-  "d_faq_a4": "Có — fork repo mẫu chính thức. Một người hoặc một agent có thể xây dựng một plugin hoạt động từ nó trong vài phút; toàn bộ thông số kỹ thuật có trong hướng dẫn plugin."
+  "d_faq_a4": "Có — fork repo mẫu chính thức. Một người hoặc một agent có thể xây dựng một plugin hoạt động từ nó trong vài phút; toàn bộ thông số kỹ thuật có trong hướng dẫn plugin.",
+  "upd_eyebrow": "Liên tục cải tiến",
+  "upd_title": "Cập nhật liên tục",
+  "upd_sub": "BagIdea Office liên tục được cập nhật — sửa lỗi, tính năng mới và hoàn thiện. Mỗi văn phòng nhận thông báo cập nhật chỉ với một cú nhấp.",
+  "upd_latest": "Mới nhất",
+  "upd_cta": "Xem điểm mới →"
 }

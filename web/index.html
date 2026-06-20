@@ -12,6 +12,7 @@
 <link rel="icon" href="img/logo.png">
 <link rel="stylesheet" href="assets/site.css">
 <script defer src="assets/i18n.js"></script>
+<script defer src="assets/sponsors.js"></script>
 </head>
 <body>
 
@@ -77,6 +78,8 @@
       <div class="feat"><div class="ic">🧩</div><h3 data-i18n="f_grid_t">Swappable 3×3 office</h3><p data-i18n="f_grid_d">Rearrange the whole floor in the 3D Editor — click two rooms to swap. Furniture, agent seats, navigation and even the cat and dogs follow their room.</p></div>
       <div class="feat"><div class="ic">🎤</div><h3 data-i18n="f_voice_t">Voice, channels & memory</h3><p data-i18n="f_voice_d">Talk by voice (F6 push-to-talk), call the office (realtime Gemini Live), give agents one of 16 ♀/♂ voices, and run it from Telegram, Discord or LINE. Hermes-style memory grows token-lean.</p></div>
       <div class="feat"><div class="ic">🔌</div><h3 data-i18n="f_plugin_t">Plugins, skills & tools</h3><p data-i18n="f_plugin_d">Extend the office with plugins (install from any GitHub repo), assign agents from a library of builtin skills, and add new capability via MCP servers — humans and agents can build plugins.</p></div>
+      <div class="feat"><div class="ic">🧠</div><h3 data-i18n="f_brain_t">Swappable brains</h3><p data-i18n="f_brain_d">Run each agent on its own model — 18 providers built in: Claude/GLM/DeepSeek/Qwen/MiniMax/Kimi direct, OpenAI/Gemini/OpenRouter/NVIDIA/Groq/Cerebras/xAI/Mistral/Together/Fireworks via a built-in zero-dependency proxy (no LiteLLM), and local Ollama/LM Studio with no API key. Pickers fetch live model lists; auto-compact keeps long chats from clogging on any model.</p></div>
+      <div class="feat"><div class="ic">🔀</div><h3 data-i18n="f_workflow_t">Workflow Builder</h3><p data-i18n="f_workflow_d">Plan work as plain-language nodes on a drag-drop canvas. The Director analyzes your flow and tells you which skills, tools, permissions and agents it needs — so anyone can plan work and let the team figure out how to run it.</p></div>
       <div class="feat"><div class="ic">🛡️</div><h3 data-i18n="f_security_t">Spatialized security</h3><p data-i18n="f_security_d">When an agent needs a tool you haven't granted, it physically walks to the Security Center and waits. You Allow / ✓✓ Forever / Deny. Granted tools run silently and never leave the desk.</p></div>
       <div class="feat"><div class="ic">📁</div><h3 data-i18n="f_projects_t">Real projects</h3><p data-i18n="f_projects_d">Register real folders as projects; the Director creates and routes work into them. Each assignee's Claude session lives inside the directory and is resumable by you — one window per project.</p></div>
       <div class="feat"><div class="ic">🌐</div><h3 data-i18n="f_i18n_t">14 languages</h3><p data-i18n="f_i18n_d">The whole UI speaks 14 languages — English, ไทย, 中文, Español, हिन्दी, العربية, Português, Русский, 日本語, Deutsch, Français, 한국어, Indonesia, Tiếng Việt — auto-translated and switchable office-wide.</p></div>
@@ -90,6 +93,10 @@
     <p class="eyebrow" data-i18n="tour_eyebrow">A look around</p>
     <h2 class="title" data-i18n="tour_title">See it in action</h2>
 
+    <div class="split">
+      <div class="txt"><h3 data-i18n="tour_brain_h">Any model, per agent</h3><p data-i18n="tour_brain_p">Pick the provider and model for each agent in ⚙ CONNECT → 🧠 MODELS/PROVIDERS. Every message is tagged with its model and the thread bar shows a live context-usage meter — and auto-compact keeps even small models running long sessions, hands-free.</p></div>
+      <img src="img/swappable-brains.png" alt="Pick a provider and model per agent, with a context-usage meter" loading="lazy">
+    </div>
     <div class="split">
       <div class="txt"><h3 data-i18n="tour1_h">A live desktop wallpaper</h3><p data-i18n="tour1_p">It runs behind your real desktop icons with an optional activity feed down the side — clean for streaming, alive while agents work.</p></div>
       <img src="img/desktop.png" alt="BagIdea Office as a desktop wallpaper" loading="lazy">
@@ -106,6 +113,17 @@
       <div class="txt"><h3 data-i18n="tour4_h">Drive it from the terminal</h3><p data-i18n="tour4_p">The bagidea CLI controls everything — start/stop, ask, status, projects, plugins, proposals, voice and more.</p></div>
       <img src="img/cli.png" alt="The bagidea CLI help screen" loading="lazy">
     </div>
+  </div>
+</section>
+
+<!-- ALWAYS IMPROVING -->
+<section id="updates">
+  <div class="wrap" style="text-align:center">
+    <p class="eyebrow" data-i18n="upd_eyebrow">Always improving</p>
+    <h2 class="title" data-i18n="upd_title">Updated constantly</h2>
+    <p class="sub" data-i18n="upd_sub" style="margin:0 auto 18px;max-width:620px">BagIdea Office ships real updates all the time — bug fixes, new features and polish. Every office gets a one-click update notice.</p>
+    <p style="font-size:15px;margin:0 0 18px"><span data-i18n="upd_latest">Latest</span>: <b id="latestVer" style="color:var(--accent,#5ec8ff)">v0.8.0</b></p>
+    <a class="btn ghost" href="https://github.com/bagidea/bagidea-office/blob/main/CHANGELOG.md" target="_blank" rel="noopener" data-i18n="upd_cta">See what's new →</a>
   </div>
 </section>
 
@@ -176,20 +194,25 @@
 
     <!-- Honored sponsors — real logos, full thanks -->
     <p class="sp-thanks" data-i18n="sp_thanks">Proudly backed by</p>
-    <div class="sponsor-wall">
-      <a class="sp-logo gold" href="https://www.warrix.co.th" target="_blank" rel="noopener" title="WARRIX — Gold Partner 🙏">
-        <img src="img/sponsors/warrix.png" alt="WARRIX — Gold Partner">
-        <span class="sp-badge">👑 Gold Partner</span>
-      </a>
+    <!-- Filled from sponsors.json by assets/sponsors.js. The markup below is the
+         no-JS fallback (and what JS replaces). -->
+    <div class="sponsor-wall" id="sponsorWall">
+      <div class="sp-row sp-row-gold">
+        <a class="sp-logo gold" href="https://www.warrix.co.th" target="_blank" rel="noopener" title="WARRIX — Gold Partner 🙏">
+          <img src="img/sponsors/warrix.png" alt="WARRIX — Gold Partner" loading="lazy">
+          <span class="sp-badge">👑 Gold Partner</span>
+        </a>
+      </div>
     </div>
 
     <div class="tiers">
       <div class="tier gold">
         <div class="crown">👑</div>
         <h3 data-i18n="sp_gold_t">Gold Partner</h3>
+        <p class="price" data-i18n="sp_gold_p">$3,000+ / mo</p>
         <ul>
-          <li data-i18n="sp_gold_1">Logo on the site &amp; in-app credits</li>
-          <li data-i18n="sp_gold_2">Top placement, largest size</li>
+          <li data-i18n="sp_gold_1">Large logo on the site &amp; in-app credits</li>
+          <li data-i18n="sp_gold_2">Top placement, largest size + glow badge</li>
           <li data-i18n="sp_gold_3">Roadmap input &amp; early builds</li>
           <li data-i18n="sp_gold_4">Shout-out in release notes</li>
         </ul>
@@ -197,6 +220,7 @@
       <div class="tier">
         <div class="crown">🥈</div>
         <h3 data-i18n="sp_silver_t">Silver Partner</h3>
+        <p class="price" data-i18n="sp_silver_p">$300+ / mo</p>
         <ul>
           <li data-i18n="sp_silver_1">Logo on the website</li>
           <li data-i18n="sp_silver_2">Mention in release notes</li>
@@ -206,16 +230,37 @@
       <div class="tier">
         <div class="crown">🥉</div>
         <h3 data-i18n="sp_bronze_t">Bronze / Backer</h3>
+        <p class="price" data-i18n="sp_bronze_p">$30+ / mo</p>
         <ul>
-          <li data-i18n="sp_bronze_1">Name on the supporters list</li>
-          <li data-i18n="sp_bronze_2">Our heartfelt thanks</li>
-          <li data-i18n="sp_bronze_3">A good-karma boost</li>
+          <li data-i18n="sp_bronze_1">Logo or name on the supporters wall</li>
+          <li data-i18n="sp_bronze_2">A link to your site or socials</li>
+          <li data-i18n="sp_bronze_3">Our heartfelt thanks</li>
+        </ul>
+      </div>
+      <div class="tier">
+        <div class="crown">💛</div>
+        <h3 data-i18n="sp_supporter_t">Supporter</h3>
+        <p class="price" data-i18n="sp_supporter_p">Any amount / mo</p>
+        <ul>
+          <li data-i18n="sp_supporter_1">Your name on the supporters wall</li>
+          <li data-i18n="sp_supporter_2">A link to your site or socials</li>
+          <li data-i18n="sp_supporter_3">A good-karma boost 💛</li>
         </ul>
       </div>
     </div>
     <div class="sponsor-cta">
-      <a class="btn primary" href="mailto:wrxbgid@warrix.co.th?subject=BagIdea%20Office%20Sponsorship" data-i18n="sp_cta">Become a sponsor</a>
-      <p class="muted" style="margin-top:12px"><a href="mailto:wrxbgid@warrix.co.th?subject=BagIdea%20Office%20Sponsorship" data-i18n="sp_contact">Reach out and let's talk →</a></p>
+      <a class="btn primary" href="https://github.com/sponsors/bagidea" target="_blank" rel="noopener" data-i18n="sp_cta">💖 Sponsor on GitHub</a>
+      <p class="muted" style="margin-top:12px"><a href="mailto:wrxbgid@warrix.co.th?subject=BagIdea%20Office%20Sponsorship" data-i18n="sp_contact">Prefer to talk first? Reach out →</a></p>
+    </div>
+
+    <div class="sp-how">
+      <h3 data-i18n="sphow_h">How sponsoring works</h3>
+      <ol>
+        <li><b data-i18n="sphow_1_h">Choose a tier &amp; sponsor.</b> <span data-i18n="sphow_1_p">Click “💖 Sponsor on GitHub”, pick a monthly tier, and GitHub handles the recurring monthly payment securely — like a YouTube or Patreon membership.</span></li>
+        <li><b data-i18n="sphow_2_h">Your logo &amp; link come from your GitHub profile.</b> <span data-i18n="sphow_2_p">Your avatar, name and link are pulled automatically from your GitHub account — there’s nothing to send us. To control your link, fill the “Website” field in your GitHub profile (Settings → Profile). Sponsoring as a GitHub Organization shows your company logo and site.</span></li>
+        <li><b data-i18n="sphow_3_h">You appear within ~6 hours.</b> <span data-i18n="sphow_3_p">As long as you pick “Make my sponsorship public” at checkout, our automation adds you to this supporters wall and the project README, sorted by tier. Your contribution amount is never shown.</span></li>
+      </ol>
+      <p class="muted" data-i18n="sphow_note">Going forward everyone joins through GitHub Sponsors (automatic &amp; recurring). The only exception is a featured partner such as WARRIX; Reuannamphung is shown as a courtesy until they move to GitHub Sponsors.</p>
     </div>
 
     <div class="founder">

@@ -126,6 +126,7 @@
   "dn_lang": "Langues",
   "dn_cli": "Référence CLI",
   "dn_faq": "FAQ",
+  "dn_changelog": "Journal des modifications ↗",
   "d_intro_h": "Introduction",
   "d_intro_p1": "BagIdea Office est un bureau IA vivant qui s'exécute comme fond d'écran de votre bureau Windows. Chaque agent IA sur votre machine devient un employé en pixel art dans un bureau HD-2D : ils marchent vers leurs postes quand le vrai travail commence, se rassemblent à la Sécurité pour demander des permissions, tiennent des réunions, apprennent des compétences, et les lumières suivent votre heure locale réelle.",
   "d_intro_p2": "Ce n'est pas un tableau de bord ni une fenêtre de chat — c'est un monde qui affiche l'état réel de vos sessions Claude Code, des exécutions d'agents sans interface et des scripts personnalisés sous forme de personnages vivants, derrière vos icônes de bureau.",
@@ -179,5 +180,10 @@
   "d_faq_q3": "Quelles plateformes sont supportées ?",
   "d_faq_a3": "Windows 11 aujourd'hui. Les backends wallpaper Linux et macOS sont sur la feuille de route.",
   "d_faq_q4": "Puis-je créer mon propre plugin ?",
-  "d_faq_a4": "Oui — forkez le dépôt de modèle officiel. Une personne ou un agent peut créer un plugin fonctionnel en quelques minutes ; la spécification complète se trouve dans le guide de plugin."
+  "d_faq_a4": "Oui — forkez le dépôt de modèle officiel. Une personne ou un agent peut créer un plugin fonctionnel en quelques minutes ; la spécification complète se trouve dans le guide de plugin.",
+  "upd_eyebrow": "Toujours en amélioration",
+  "upd_title": "Mis à jour en continu",
+  "upd_sub": "BagIdea Office reçoit des mises à jour en permanence — corrections, nouveautés et finitions. Chaque bureau reçoit une notification de mise à jour en un clic.",
+  "upd_latest": "Dernière",
+  "upd_cta": "Voir les nouveautés →"
 }

@@ -365,5 +365,15 @@ func _process(_delta: float) -> void:
 	_track_fx(_delta, cam)
 
 	if _wb_panel.visible:
-		var sp2 := cam.unproject_position(_wb_world_pos)
-		_wb_panel.position = sp2 - Vector2(_wb_panel.size.x * 0.5, _wb_panel.size.y)
+		if cam.is_position_behind(_wb_world_pos):
+			_wb_panel.position = Vector2(-9999, -9999)  # meeting room behind the camera this frame
+		else:
+			var sp2 := cam.unproject_position(_wb_world_pos)
+			# Scale with camera distance like the agent plates — the meeting board
+			# used to keep a fixed 2D size, so it looked right zoomed IN but loomed
+			# oversized/out-of-place at the normal/zoomed-out camera. Now it sits in
+			# the diorama at every zoom.
+			var wbdist := cam.global_position.distance_to(_wb_world_pos)
+			var wbs: float = clampf(58.0 / wbdist, 0.5, 1.1)
+			_wb_panel.scale = Vector2(wbs, wbs)
+			_wb_panel.position = sp2 - Vector2(_wb_panel.size.x * 0.5 * wbs, _wb_panel.size.y * wbs)

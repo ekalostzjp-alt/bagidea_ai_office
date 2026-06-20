@@ -19,6 +19,9 @@ const PACK_MAP := {
 	"door_out": "Door Close 4-1.wav",       # off to the bunks
 	"page": "Book Page 1-2.wav",            # notes & paperwork
 	"split": "Fire Whoosh 2-15.wav",        # 💥 the clone burst
+	"boom": "Explosion Large 1-1.wav",      # 💥 server-room blast (the big one)
+	"boom2": "Explosion Medium 2-1.wav",    # 💥 the second, smaller pop
+	"fire": "Fire Burning Loop 2.wav",      # 🔥 crackle as the room catches
 }
 
 var enabled := true
@@ -27,6 +30,7 @@ var hidden := false  # office hidden → everything stays silent (setting untouc
 var _streams := {}
 var _pool: Array[AudioStreamPlayer] = []
 var _last_play := {}  # name -> ticks ms (rate limiting)
+var _loops := {}      # name -> dedicated AudioStreamPlayer for SUSTAINED sounds
 
 func _ready() -> void:
 	# Synth fallbacks first, then the real pack overrides what it can.
@@ -72,6 +76,37 @@ func play(p_name: String, min_gap_ms := 120) -> void:
 			p.pitch_scale = randf_range(0.96, 1.05)
 			p.play()
 			return
+
+## Start a SUSTAINED/looping sound on its own dedicated player (e.g. the server-room
+## fire crackle). Must be paired with stop_loop() — a looping stream on the fire-and-
+## forget pool would play forever AND wedge a pool slot (it never reads `not playing`).
+func loop(p_name: String) -> void:
+	if not enabled or hidden or not _streams.has(p_name):
+		return
+	if _loops.has(p_name) and is_instance_valid(_loops[p_name]):
+		return  # already running
+	var st = _streams[p_name]
+	# Force a clean forward loop if the asset didn't carry loop metadata.
+	if st is AudioStreamWAV and st.loop_mode == AudioStreamWAV.LOOP_DISABLED:
+		st = st.duplicate()
+		st.loop_mode = AudioStreamWAV.LOOP_FORWARD
+		st.loop_begin = 0
+		st.loop_end = st.data.size() / (4 if st.stereo else 2)  # 16-bit frames
+	var p := AudioStreamPlayer.new()
+	p.volume_db = -11.0
+	p.bus = "Master"
+	p.stream = st
+	add_child(p)
+	p.play()
+	_loops[p_name] = p
+
+## Stop a sustained sound started with loop(). Safe to call when nothing's playing.
+func stop_loop(p_name: String) -> void:
+	var p = _loops.get(p_name)
+	if is_instance_valid(p):
+		p.stop()
+		p.queue_free()
+	_loops.erase(p_name)
 
 ## One decaying tone (sine / square / noise) as a 16-bit 22 kHz WAV.
 func _tone(freq: float, dur: float, decay: float, kind := "sine") -> AudioStreamWAV:

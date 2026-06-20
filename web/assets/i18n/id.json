@@ -13,7 +13,6 @@
   "badge_free": "Gratis digunakan",
   "badge_langs": "14 bahasa",
   "shot_cap": "Desktop nyata, direkam langsung — agen di meja mereka, papan merek, siklus siang/malam mengikuti waktu lokal kamu.",
-
   "what_eyebrow": "Apa ini",
   "what_title": "Bukan dasbor. Sebuah dunia.",
   "what_lead": "Kebanyakan alat AI hanya memberimu kotak obrolan. BagIdea Office memberi agen-agenmu tempat untuk tinggal — dan menunjukkan kondisi nyata setiap sesi Claude Code sebagai karyawan pixel-art yang sedang bekerja.",
@@ -23,7 +22,6 @@
   "what_p2_p": "Tidak ada yang dipalsukan di layar. Berjalan ke Pusat Keamanan adalah permintaan izin nyata; layar bercahaya adalah panggilan alat secara langsung; tugas yang selesai benar-benar sudah selesai. Wallpaper merender kebenaran.",
   "what_p3_h": "Hidup di desktop kamu",
   "what_p3_p": "Dirender di balik ikon desktop seperti wallpaper sungguhan — tenang saat menganggur, hidup saat bekerja. Kepala obrolan dan ikon baki membuatnya hanya satu klik.",
-
   "feat_eyebrow": "Fitur",
   "feat_title": "Semua yang bisa dilakukan kantormu",
   "feat_lead": "Produk operasi agen penuh — dirender sebagai sebuah tempat.",
@@ -45,7 +43,6 @@
   "f_projects_d": "Daftarkan folder nyata sebagai proyek; Director membuat dan mengarahkan pekerjaan ke dalamnya. Sesi Claude setiap penerima tugas berjalan di dalam direktori dan dapat dilanjutkan olehmu — satu jendela per proyek.",
   "f_i18n_t": "14 bahasa",
   "f_i18n_d": "Seluruh antarmuka berbicara dalam 14 bahasa — English, ไทย, 中文, Español, हिन्दी, العربية, Português, Русский, 日本語, Deutsch, Français, 한국어, Indonesia, Tiếng Việt — diterjemahkan otomatis dan dapat diubah di seluruh kantor.",
-
   "tour_eyebrow": "Sekilas pandang",
   "tour_title": "Lihat aksinya",
   "tour1_h": "Wallpaper desktop langsung",
@@ -56,7 +53,6 @@
   "tour3_p": "3D Office Editor memungkinkan kamu menukar ruangan di grid 3×3, memindahkan Ghost Deck, menempatkan furnitur, dan mengimpor model serta gambar milikmu sendiri.",
   "tour4_h": "Kendalikan dari terminal",
   "tour4_p": "CLI bagidea mengontrol segalanya — mulai/berhenti, tanya, status, proyek, plugin, proposal, suara, dan banyak lagi.",
-
   "inst_eyebrow": "Instalasi",
   "inst_title": "Siap berjalan dalam hitungan menit",
   "inst_lead": "Satu perintah menginstal semua dependensi, membangun aplikasi, dan menghubungkannya ke PATH-mu.",
@@ -70,12 +66,10 @@
   "inst_req_h": "Persyaratan",
   "inst_req": "Windows 11 · GPU berkemampuan Vulkan (diverifikasi pada GTX 1060) · akun Claude (CLI Claude Code). Node, Rust, dan Godot diinstal untukmu oleh installer.",
   "inst_manual": "Lebih suka manual? Klon repo, bangun shell Rust dengan cargo build --release, dan jalankan. Langkah lengkap ada di dokumentasi.",
-
   "cli_eyebrow": "Baris perintah",
   "cli_title": "CLI bagidea",
   "cli_lead": "Jalankan seluruh kantor dari terminal-mu — dan skripsikan ke apa pun.",
   "cli_more": "Lihat referensi CLI lengkap di dokumentasi →",
-
   "sp_eyebrow": "Sponsor",
   "sp_title": "Dukung ruang kerja agen AI terbuka",
   "sp_lead": "BagIdea Office dibangun secara terbuka. Sponsorship mendanai pengembangan, lisensi seni, backend lintas platform, dan menjaganya tetap gratis digunakan. Merekmu ditampilkan di sini dan di kredit aplikasi.",
@@ -94,7 +88,6 @@
   "sp_bronze_3": "Dorongan karma baik",
   "sp_cta": "Jadilah sponsor",
   "sp_contact": "Hubungi dan mari bicara →",
-
   "foot_tag": "Wallpaper kamu mulai bekerja.",
   "foot_made": "Dibangun dengan Claude Code.",
   "foot_product": "Produk",
@@ -112,7 +105,6 @@
   "founder_name": "Mr. Thanawat Suriya",
   "founder_role": "CEO & Pendiri · BagIdea Innovation Co., Ltd.",
   "copyright": "© 2026 BagIdea Innovation Co., Ltd. · Sumber terbuka berlisensi MIT.",
-
   "d_title": "Dokumentasi",
   "d_sub": "Semua tentang BagIdea Office — apa itu, setiap fitur, cara menginstal, dan CLI lengkap.",
   "d_back": "← Beranda",
@@ -134,19 +126,17 @@
   "dn_lang": "Bahasa",
   "dn_cli": "Referensi CLI",
   "dn_faq": "FAQ",
-
+  "dn_changelog": "Catatan perubahan ↗",
   "d_intro_h": "Pengantar",
   "d_intro_p1": "BagIdea Office adalah kantor agen AI yang hidup dan berjalan sebagai wallpaper desktop Windows-mu. Setiap agen AI di mesinmu menjadi karyawan pixel-art di kantor HD-2D: mereka berjalan ke meja saat pekerjaan nyata dimulai, berkumpul di Keamanan untuk meminta izin, mengadakan rapat, mempelajari skill, dan lampu mengikuti waktu lokal nyatamu.",
   "d_intro_p2": "Ini bukan dasbor dan bukan jendela obrolan — ini adalah dunia yang merender kondisi nyata sesi Claude Code, jalannya agen tanpa antarmuka, dan skrip kustom sebagai karakter hidup, di balik ikon desktopmu.",
   "d_intro_p3": "Tiga lapisan independen menjaganya tetap kuat: daemon Node tanpa dependensi (sumber kebenaran), renderer Godot 4 (wallpaper), dan antarmuka overlay ringan (obrolan, pengaturan, persetujuan). Daemon menjaga agen tetap berjalan meski renderer dimulai ulang.",
-
   "d_what_h": "Apa itu",
   "d_what_p": "Pada intinya, BagIdea Office adalah lapisan operasi untuk agen AI — diberi sebuah tempat. Alih-alih daftar tugas datar, kamu mendapatkan pandangan spasial yang jujur tentang apa yang sebenarnya dilakukan agen-agenmu:",
   "d_what_l1": "Sesi Claude Code nyata, dimunculkan dengan persona, skill, dan alat yang diizinkan untuk setiap agen.",
   "d_what_l2": "Rantai komando CEO → Director → tim yang kamu kendalikan dengan memberi perintah.",
   "d_what_l3": "Persetujuan izin spasial — agen berjalan ke Keamanan untuk alat yang belum kamu izinkan.",
   "d_what_l4": "Folder proyek nyata, sesi yang dapat dilanjutkan, dan sub-agen yang membelah diri untuk pekerjaan paralel.",
-
   "d_concepts_h": "Konsep inti",
   "d_c_ceo_h": "Kamu adalah CEO",
   "d_c_ceo_p": "Kursi emas adalah kamu. Ketik perintah dan Director (agen Claude utama) berjalan mendekat, menerimanya, merencanakan, dan mendelegasikan ke tim.",
@@ -156,7 +146,6 @@
   "d_c_ghost_p": "Ketika pekerjaan diparalelkan, agen membelah diri menjadi klon tembus cahaya yang bekerja di Ghost Deck dan menyatu kembali dengan sebuah sintesis.",
   "d_c_grid_h": "Grid ruangan",
   "d_c_grid_p": "Lantai adalah jigsaw 3×3 dari ruangan identik; ruangan mana pun cocok di slot mana pun, sehingga kamu dapat mengatur ulang seluruh kantor di editor.",
-
   "d_install_h": "Instalasi",
   "d_install_win_h": "Windows — installer satu langkah (disarankan)",
   "d_install_win_p": "Buka PowerShell dan jalankan perintah di bawah ini. Ini menginstal semua dependensi (Git, Node LTS, Rust, Godot 4.6.3, CLI Claude Code), mengkloning aplikasi ke %LOCALAPPDATA%\\BagIdeaOffice, membangun shell desktop, memberi merek ikon jendela, menambahkan bagidea ke PATH-mu, dan membuat pintasan Menu Mulai. Aman untuk dijalankan ulang — setiap langkah melewati yang sudah selesai.",
@@ -165,7 +154,6 @@
   "d_install_first_h": "Pertama kali dijalankan",
   "d_install_first_p": "Masuk ke Claude sekali, lalu mulai kantor. Wallpaper-mu menjadi kantor langsung; kepala obrolan dan ikon baki muncul.",
   "d_install_plat": "Dukungan platform: Windows 11 saat ini (penyematan wallpaper menggunakan teknik WorkerW). Backend Linux dan macOS direncanakan untuk pembaruan mendatang.",
-
   "d_using_h": "Menggunakannya",
   "d_chat_h": "Obrolan & CEO",
   "d_chat_p": "Panel obrolan terbuka di kursi CEO-mu. Ketik perintah di kursi CEO dan Director berjalan mendekat untuk menerimanya, merencanakan, dan mendelegasikan — kamu menyaksikan serah terima di wallpaper, dan ringkasan dibawa kembali kepadamu. Untuk berbicara langsung ke agen mana pun, klik wajah mereka di rel atau di peta langsung. Setiap percakapan adalah utas yang dapat dilanjutkan dengan riwayat penuh.",
@@ -177,13 +165,11 @@
   "d_editor_p": "Buka editor (tombol 🎨 atau bagidea editor) untuk mengatur ulang kantor dalam 3D nyata: klik dua ruangan untuk menukarnya di grid 3×3, pindahkan Ghost Deck, tempatkan furnitur dan dekorasi, serta impor model .glb/.gltf/.fbx dan gambar milikmu sendiri. Simpan dan wallpaper langsung diperbarui — furnitur, kursi agen, navigasi, dan hewan peliharaan semuanya mengikuti.",
   "d_voice_h": "Suara & saluran",
   "d_voice_p": "Tahan F6 di mana saja untuk mengucapkan perintah ke kantor. Beri agen salah satu dari 16 suara TTS (terbagi jelas · ). Hubungi agen utama untuk percakapan suara real-time (Gemini Live) dengan suara yang ditetapkan. Hubungkan Telegram, Discord, atau LINE dan kendalikan kantormu dari ponsel — balasan datang kembali di saluran yang sama.",
-
   "d_plugins_h": "Plugin, skill & alat",
   "d_plugins_p": "Plugin benar-benar memperluas kantor — folder dengan manifes dapat menambahkan panel UI, rute HTTP, dan perintah yang dapat dijalankan agen, dengan akses ctx ke registry, feed, broadcasting, bahkan menjalankan giliran Claude. Dua plugin inti disertakan (🎵 Music Player, 🧮 Calculator); instal lebih banyak dari repo GitHub mana pun. Mulai dari template resmi, atau baca repo contoh.",
   "d_skills_p": "Setiap kantor dilengkapi perpustakaan skill bawaan (riset mendalam, kontrol kantor, pembangunan plugin, tinjauan kode, dokumentasi, debugging, pengelolaan data, kickoff proyek, diagram) yang dapat kamu tetapkan ke agen mana pun, ditambah skill bergaya Hermes yang dipelajari kantor secara otomatis setelah pekerjaan nyata. Tambahkan kemampuan mentah baru melalui server MCP.",
   "d_lang_h": "Bahasa",
   "d_lang_p": "Seluruh antarmuka mendukung 14 bahasa. Bahasa Inggris adalah defaultnya; pilih yang lain di pengaturan dan kantor menerjemahkan secara menyeluruh (dan mengingat pilihanmu per mesin). Situs web ini berbicara dalam 14 bahasa yang sama — gunakan pemilih di bilah atas.",
-
   "d_cli_h": "Referensi CLI",
   "d_cli_p": "Installer menempatkan bagidea di PATH-mu. Ini berbicara ke kantor yang sedang berjalan dan dapat memulainya. Beberapa sorotan:",
   "d_faq_h": "FAQ",
@@ -194,5 +180,10 @@
   "d_faq_q3": "Platform mana yang didukung?",
   "d_faq_a3": "Windows 11 saat ini. Backend wallpaper Linux dan macOS ada dalam roadmap.",
   "d_faq_q4": "Bisakah saya membangun plugin sendiri?",
-  "d_faq_a4": "Bisa — fork repo template resmi. Seseorang atau agen dapat membangun plugin yang berfungsi darinya dalam beberapa menit; spesifikasi lengkapnya ada di panduan plugin."
+  "d_faq_a4": "Bisa — fork repo template resmi. Seseorang atau agen dapat membangun plugin yang berfungsi darinya dalam beberapa menit; spesifikasi lengkapnya ada di panduan plugin.",
+  "upd_eyebrow": "Terus ditingkatkan",
+  "upd_title": "Selalu diperbarui",
+  "upd_sub": "BagIdea Office terus mendapat pembaruan — perbaikan bug, fitur baru, dan penyempurnaan. Setiap office mendapat notifikasi pembaruan sekali klik.",
+  "upd_latest": "Terbaru",
+  "upd_cta": "Lihat yang baru →"
 }

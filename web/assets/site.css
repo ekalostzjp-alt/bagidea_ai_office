@@ -85,10 +85,14 @@ h2.title + .lead { text-align:center; color:var(--dim); max-width:720px; margin:
 
 /* feature grid */
 .grid { display:grid; gap:18px; margin-top:42px; }
-.grid.c3 { grid-template-columns:repeat(3,1fr); }
-.grid.c2 { grid-template-columns:repeat(2,1fr); }
-@media(max-width:900px){ .grid.c3 { grid-template-columns:1fr 1fr; } }
-@media(max-width:640px){ .grid.c3,.grid.c2 { grid-template-columns:1fr; } }
+/* c3/c2 use centered flex-wrap so an incomplete last row stays balanced — a lone
+   trailing card centers instead of dangling alone on the left (grid left-aligned
+   it, which looked off once the card count wasn't a clean multiple of 3). */
+.grid.c3, .grid.c2 { display:flex; flex-wrap:wrap; justify-content:center; }
+.grid.c3 > * { flex:1 1 300px; max-width:calc(33.333% - 12px); }
+.grid.c2 > * { flex:1 1 340px; max-width:calc(50% - 9px); }
+@media(max-width:900px){ .grid.c3 > * { max-width:calc(50% - 9px); } }
+@media(max-width:640px){ .grid.c3 > *, .grid.c2 > * { max-width:100%; flex-basis:100%; } }
 .feat { background:linear-gradient(180deg,var(--card),var(--card2)); border:1px solid var(--line);
   border-radius:16px; padding:22px; transition:border-color .2s, transform .2s; }
 .feat:hover { border-color:var(--accent); transform:translateY(-3px); }
@@ -140,16 +144,40 @@ pre code { color:#cfe3ff; white-space:pre; }
 /* Honored-sponsor wall: real logos on light cards so any logo reads on dark. */
 .sp-thanks { text-align:center; margin:36px 0 14px; letter-spacing:2px; text-transform:uppercase;
   font-size:12px; color:var(--dim); }
-.sponsor-wall { display:flex; flex-wrap:wrap; gap:20px; justify-content:center; }
+/* Wall = a stack of per-tier rows; each tier shrinks as it goes down. */
+.sponsor-wall { display:flex; flex-direction:column; gap:20px; align-items:center; }
+.sp-row { display:flex; flex-wrap:wrap; gap:20px; justify-content:center; align-items:flex-end; }
 .sp-logo { display:flex; flex-direction:column; align-items:center; gap:10px; text-decoration:none;
   background:#fff; border:1px solid var(--line); border-radius:18px; padding:24px 34px;
   transition:transform .15s, box-shadow .15s; }
 .sp-logo:hover { transform:translateY(-3px); box-shadow:0 16px 40px rgba(0,0,0,.4); }
-.sp-logo img { height:84px; width:auto; display:block; }
-.sp-logo.gold { border-color:rgba(255,206,106,.7); box-shadow:0 0 44px rgba(255,206,106,.14); }
+.sp-logo img { height:64px; width:auto; display:block; }
+.sp-logo .sp-name { color:#1a1a2e; font-weight:800; font-size:18px; }
 .sp-badge { font-size:12px; font-weight:800; color:#caa23a; letter-spacing:.5px; }
-.tiers { display:grid; grid-template-columns:repeat(3,1fr); gap:18px; margin-top:42px; }
-@media(max-width:760px){ .tiers { grid-template-columns:1fr; } }
+/* gold = grandest: biggest logo, padding, glow + animated halo */
+.sp-logo.gold { border-color:rgba(255,206,106,.7); box-shadow:0 0 56px rgba(255,206,106,.22);
+  padding:30px 44px; }
+.sp-logo.gold img { height:96px; }
+.sp-logo.silver img { height:58px; }
+.sp-logo.silver { padding:20px 28px; }
+.sp-logo.bronze img { height:42px; }
+.sp-logo.bronze { padding:16px 22px; border-radius:14px; }
+.sp-logo.bronze .sp-name { font-size:15px; }
+.sp-logo.bronze .sp-badge { font-size:11px; }
+/* supporter = compact name chips, scales to many names */
+.sp-chips { display:flex; flex-wrap:wrap; gap:10px; justify-content:center; max-width:780px; }
+.sp-chip { display:inline-flex; align-items:center; gap:8px; text-decoration:none;
+  font-size:13px; font-weight:700; color:var(--text);
+  background:var(--card); border:1px solid var(--line); border-radius:999px; padding:6px 15px;
+  transition:transform .12s, border-color .12s; }
+.sp-chip.has-av { padding-left:6px; }
+.sp-chip-av { width:26px; height:26px; border-radius:50%; object-fit:cover; display:block;
+  border:1px solid var(--line); }
+a.sp-chip:hover { transform:translateY(-2px); border-color:var(--accent); color:var(--accent); }
+a.sp-chip:hover .sp-chip-av { border-color:var(--accent); }
+.tiers { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-top:42px; }
+@media(max-width:980px){ .tiers { grid-template-columns:repeat(2,1fr); } }
+@media(max-width:560px){ .tiers { grid-template-columns:1fr; } }
 .tier { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:26px 22px; text-align:center; }
 .tier.gold { border-color:rgba(255,206,106,.5); box-shadow:0 0 40px rgba(255,206,106,.08) inset; }
 .tier .crown { font-size:30px; }
@@ -158,6 +186,14 @@ pre code { color:#cfe3ff; white-space:pre; }
 .tier ul { list-style:none; margin:16px 0 0; color:var(--dim); font-size:14px; }
 .tier ul li { padding:5px 0; border-top:1px dashed var(--line); }
 .sponsor-cta { text-align:center; margin-top:38px; }
+/* "how sponsoring works" explainer */
+.sp-how { max-width:760px; margin:34px auto 0; text-align:left; background:var(--card);
+  border:1px solid var(--line); border-radius:16px; padding:24px 28px; }
+.sp-how h3 { margin:0 0 14px; font-size:18px; }
+.sp-how ol { margin:0; padding-left:20px; color:var(--dim); font-size:14px; line-height:1.65; }
+.sp-how ol li { margin-bottom:10px; }
+.sp-how ol li b { color:var(--text); }
+.sp-how .muted { margin-top:14px; font-size:13px; }
 
 /* founder / footer */
 .founder { display:flex; gap:18px; align-items:center; justify-content:center; flex-wrap:wrap;

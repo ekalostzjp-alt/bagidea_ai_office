@@ -79,12 +79,22 @@
   #zoombar { position:absolute; right:12px; bottom:12px; display:flex; gap:6px; z-index:5; }
   #zoombar button { padding:4px 10px; }
   #tip { position:absolute; left:12px; bottom:12px; color:var(--dim); font-size:11px; opacity:.65; pointer-events:none; max-width:60%; }
+  /* themed confirm dialog — replaces the native browser confirm() (off-theme) */
+  .dlgwrap { position:fixed; inset:0; z-index:200; display:none; align-items:center; justify-content:center;
+    background:rgba(5,9,16,.55); -webkit-backdrop-filter:blur(2px); backdrop-filter:blur(2px); }
+  .dlgwrap.on { display:flex; }
+  .dlg { width:min(90%,380px); background:var(--card); border:1px solid rgba(94,200,255,.3);
+    border-radius:14px; box-shadow:0 18px 50px rgba(0,0,0,.55); padding:18px; animation:dlgin .16s ease both; }
+  @keyframes dlgin { from { opacity:0; transform:translateY(8px) scale(.98); } }
+  .dlg .msg { font-size:13px; color:var(--text); line-height:1.55; margin-bottom:15px; white-space:pre-wrap; }
+  .dlg .row { display:flex; gap:8px; justify-content:flex-end; }
 </style>
 </head>
 <body>
   <div id="bar">
     <input id="name" placeholder="ชื่อ workflow…" data-ph="ชื่อ workflow…" value="Workflow ใหม่">
     <button onclick="newTab()" data-i18n="🆕 ใหม่">🆕 ใหม่</button>
+    <button onclick="draftWf()" data-i18n="🪄 ร่างด้วย Director">🪄 ร่างด้วย Director</button>
     <button onclick="addNode()">＋ Node</button>
     <select id="wfopen" onchange="if(this.value){openTab(this.value);this.value='';}"><option value="">📂 เปิด…</option></select>
     <span class="grow"></span>
@@ -140,6 +150,13 @@
     "วิเคราะห์ไม่สำเร็จ ลองใหม่":"Analysis failed — try again","⏳ ทีมกำลังทำงานตาม workflow…":"⏳ The team is running the workflow…",
     "รันไม่สำเร็จ ลองใหม่":"Run failed — try again","💾 บันทึกแล้ว":"💾 Saved","💾 บันทึกเป็นสำเนาแล้ว":"💾 Saved as a copy","บันทึกไม่สำเร็จ":"Save failed","✅ ผลลัพธ์:":"✅ Result:",
     "สร้าง skill ไม่สำเร็จ":"Couldn't create skill","ลบ workflow นี้?":"Delete this workflow?","(ไม่มีชื่อ)":"(untitled)",
+    "บันทึกทับ workflow เดิมตัวนี้? กด ตกลง เพื่อเขียนทับของเดิม":"Overwrite this saved workflow? Click OK to replace the existing version.",
+    "ตกลง":"OK","ยกเลิก":"Cancel",
+    "🪄 ร่างด้วย Director":"🪄 Draft with Director",
+    "อยากได้ workflow ทำอะไร? พิมพ์เป้าหมายสั้นๆ — Director จะร่างให้":"What should the workflow do? Type a short goal — the Director will draft it.",
+    "เช่น สรุปข่าว AI ทุกเช้าแล้วส่งเข้า Telegram":"e.g. summarize AI news every morning and send to Telegram",
+    "🪄 Director กำลังร่าง workflow…":"🪄 The Director is drafting a workflow…",
+    "ร่างไม่สำเร็จ ลองใหม่":"Draft failed — try again","✅ ร่างเสร็จ — แก้ไขแล้วกด 💾 บันทึก":"✅ Drafted — edit it, then press 💾 Save",
     "📂 เปิด…":"📂 Open…","ตัวอย่าง (อ่านอย่างเดียว)":"Examples (read-only)","ของฉัน":"Mine",
     "เมื่อสั่งให้เริ่ม…":"When started…","เมื่อสั่งให้เริ่ม":"When started","หาข่าว A":"Find news A","หาข่าว B":"Find news B","รวมแล้วเขียนสรุป":"Merge & summarize",
   };
@@ -383,6 +400,25 @@
     });
   }
   function flash(t){ t=tr(t); const p=document.getElementById("plan"); const o=p.textContent; p.textContent=t; setTimeout(()=>{ if(p.textContent===t)p.textContent=o; },1500); }
+  // Themed confirm — a dark-glass dialog on-brand with the office (the native confirm()
+  // popup is off-theme). Returns a Promise<bool>. Enter = OK · Esc / backdrop = Cancel.
+  function askConfirm(message){
+    return new Promise((resolve)=>{
+      const wrap=document.createElement("div"); wrap.className="dlgwrap on";
+      wrap.innerHTML=`<div class="dlg"><div class="msg"></div><div class="row"><button class="cancel"></button><button class="primary ok"></button></div></div>`;
+      wrap.querySelector(".msg").textContent=message;
+      wrap.querySelector(".cancel").textContent=tr("ยกเลิก");
+      wrap.querySelector(".ok").textContent=tr("ตกลง");
+      const done=(v)=>{ wrap.remove(); document.removeEventListener("keydown",onKey); resolve(v); };
+      wrap.querySelector(".ok").onclick=()=>done(true);
+      wrap.querySelector(".cancel").onclick=()=>done(false);
+      wrap.onclick=(e)=>{ if(e.target===wrap) done(false); };
+      function onKey(e){ if(e.key==="Escape")done(false); else if(e.key==="Enter")done(true); }
+      document.addEventListener("keydown",onKey);
+      document.body.appendChild(wrap);
+      wrap.querySelector(".ok").focus();
+    });
+  }
 
   // ===== right-click anywhere on the canvas → "＋ Node" menu at the cursor =====
   // Drops the new node right where you clicked (handy — no hunting for it).

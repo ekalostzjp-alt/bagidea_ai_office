@@ -4,6 +4,250 @@ All notable changes to BagIdea Office. A **release** is a deliberate `VERSION`
 bump on `main` (see [RELEASING.md](RELEASING.md)) — that's what triggers the
 in-app 🔄 update banner. Versions follow [semver](https://semver.org).
 
+## [0.9.8] — Attached images readable by any model
+
+**Fixed**
+- **Attached images now work on every model** — attaching an image only passed its file
+  path with a "read it" note, so a text-only brain (DeepSeek, GLM, …) replied that it
+  couldn't read the image. The daemon now transcribes each attached image to text (visual
+  description + verbatim OCR) with a vision model — Gemini Flash first, OpenAI gpt-4o-mini
+  fallback — and inlines that into the prompt, so any brain can read it. The original file
+  still rides along for natively-multimodal brains to read directly. (Needs a Gemini or
+  OpenAI key in ⚙ CONNECT; falls back to the old behaviour without one.)
+
+## [0.9.7] — Agent models in the roster, orb polish
+
+**Added**
+- **Each agent's model is shown in the roster** — the agents panel now shows a
+  "🧠 &lt;model&gt;" line under every agent (e.g. `deepseek-v4-pro`, `kimi-for-coding`,
+  `glm-4.6`; `Claude` for the default brain), with the full provider/model on hover. The
+  CEO — your stand-in, not an AI agent — shows none.
+
+**Fixed**
+- **Orb edge looks smooth** — the circular clip sat exactly on the orb's glowing rim, so
+  its hard edge cut the glow against the colourful wallpaper and looked jagged. The orb art
+  is now inset a few pixels, leaving a thin transparent halo so the clip falls on empty
+  space instead of the glow.
+- **No caption chrome behind the orb on click** — despite being undecorated, the orb
+  window still carried a system menu + min/max styles, so clicking it flashed a white
+  caption bar and a system icon / window buttons in the corners. Those styles are dropped
+  and the non-client area is removed, so nothing draws behind the orb (without disturbing
+  the transparent compositing).
+
+## [0.9.6] — Orb click-through
+
+**Fixed**
+- **Orb no longer blocks the desktop around it** — the orb's window is wider than the
+  visible circle (Windows pads it to a min width) with transparent margins, so anything
+  beneath them — e.g. desktop icons — couldn't be clicked, and the orb looked off-centre.
+  The window is now clipped to a circle centred on the visible orb (sized from the real
+  client rect, re-applied on DPI/monitor changes): the margins are clipped away and click
+  straight through to the desktop, the orb sits dead-centre, and a stray title-bar sliver
+  on click is gone too.
+
+## [0.9.5] — Per-model context windows, Kimi Code, orb polish
+
+**Added**
+- **Kimi Code provider** — the Kimi Code coding plan (kimi.com/code) is a separate
+  service from the general Kimi · Moonshot API: its own `sk-kimi-…` keys, its own
+  Anthropic-compatible endpoint (`https://api.kimi.com/coding`), and a single model
+  (`kimi-for-coding`). It's now a one-click built-in provider — paste the key and
+  Connect (verified live). Previously such a key failed against the Moonshot endpoint
+  with a confusing 401.
+
+**Improved**
+- **Context window is now per-model and auto-detected** — the usage meter and the
+  compaction point used one coarse number per provider, so models were badly mis-sized
+  (DeepSeek showed 128k and compacted at ~115k despite a real **1M** window). Now each
+  model resolves its own window from a researched table (Claude 4.6/4.8 1M, DeepSeek V4
+  1M, Gemini 2.5 1M, GPT-4.1 1M, GLM-4.6 200k, Qwen3-Coder 1M, Kimi K2 256k, Grok, Llama,
+  Mistral, …) and, where a provider advertises it on its model list (OpenRouter, Groq,
+  Together, …), the **live** value wins automatically. The compaction budget is derived
+  from that window (~80%), so threads on big-context models run far longer before
+  summarizing. Still overridable per provider via `providerConfig.contextWindow` /
+  `contextBudget`.
+
+**Fixed**
+- **Orb no longer has an invisible grab box** — the chat-head's square window let
+  its transparent corners (outside the visible circle) catch clicks and drags. Pointer
+  events outside the circle are now ignored, so only the orb itself drags and toggles.
+
+## [0.9.4] — Reliable voice hotkey + gender-aware agents
+
+**Fixed**
+- **Voice hotkey (Right Ctrl) no longer wedges** — holding the push-to-talk key
+  sometimes did nothing (then started working again after clicking elsewhere). A
+  key-up could be missed when window focus shifted around the moment of a press,
+  leaving the hotkey "stuck down" so the next press was swallowed as auto-repeat.
+  A 150 ms watchdog now reconciles the tracked state against the key's real
+  physical state, so the hotkey can never get stuck.
+- **Agents now know their gender — voice & words match** — an agent with a male voice
+  could still write/speak about itself as female (e.g. saying "ค่ะ"), so the voice you
+  heard and the words clashed. The gender is now read straight off the assigned voice
+  preset (♀/♂) and stated in the agent's persona, so it refers to itself consistently in
+  every language (Thai ครับ/ผม vs ค่ะ/ฉัน, pronouns, honorifics). Applies to both chat and
+  realtime calls.
+
+## [0.9.3] — Voice fixes, smarter calls, macOS copy/paste
+
+**Fixed**
+- **Voice push-to-talk no longer garbles Thai** — it produced `�` characters (worse the
+  longer you spoke) because the transcription response was decoded per network chunk,
+  splitting multi-byte characters. Bodies are now decoded as UTF-8 whole. (Same fix applied
+  to Claude-written summaries and the auto-translation path.)
+- **macOS: copy/paste works** — ⌘C / ⌘V / ⌘X / ⌘A had no effect because the frameless
+  window shipped no Edit menu, so the shortcuts never reached text fields. Adds a standard
+  Edit menu. (Fixes #8.)
+
+**Improved**
+- **Smarter voice calls** — the call agent is now framed as your **Director** and gets a
+  live office snapshot (projects in progress, proposals awaiting approval, scheduled jobs)
+  on top of the team roster + notes, so it can actually talk about your work and help plan
+  (and it takes new orders to delegate after the call). Every call also leaves a chat-app-
+  style record in the conversation: "📞 Voice call with <name> · HH:MM · 2m 13s".
+
+Note: a mishearing by the speech model (one Thai word for another) is separate — that's the
+accuracy of the underlying Whisper/Gemini transcription, not the corruption fixed above.
+
+## [0.9.2] — Launch with Windows by default
+
+**Fixed**
+- A fresh install now **starts automatically with Windows.** Previously nothing wrote the
+  auto-start entry, so the office didn't come back after a reboot. The installer enables it
+  on first install (without overriding a later "off"), and existing installs get it turned
+  on **once** on their next `bagidea update` (marker-guarded, so it's never re-enabled after
+  you turn it off). Toggle anytime with `bagidea startup on|off`.
+
+## [0.9.1] — Office files, a tool-aware toolkit skill, and a real license
+
+**Added**
+- **Office-file support** — the installer now bundles **LibreOffice**, so agents can read &
+  convert **xlsx / docx / pptx** (→ csv / pdf / txt) headlessly via `soffice`. Fills the
+  spreadsheet gap (CSV/JSON were already covered).
+- **"File & Media Toolkit" built-in skill** — a protected skill that maps each task to the
+  right bundled tool, so the office's existing power actually gets used instead of an agent
+  saying it "can't": PDF (Read), Office files (LibreOffice), docs/books & slides
+  (`pandoc` → pdf/docx/epub/pptx), YouTube/video (`yt-dlp` + transcribe, `ffmpeg` frames),
+  images (ImageMagick), data (csv/`jq`). Assign it to your hands-on agents.
+
+**Changed**
+- **Added an MIT LICENSE** — the project is now properly open source (it was previously
+  missing a license file).
+
+Note: the toolkit skill ships through `bagidea update` (built-ins reseed on restart);
+LibreOffice and the other agent CLI tools are installed at install time (a fresh install,
+or re-running the installer).
+
+## [0.9.0] — More brains, safer delegation, workflows agents can build
+
+A big follow-up to Swappable Brains: many more models, a quality gate, and a Workflow
+Builder the team can drive — plus a redesigned chat-head.
+
+**Added**
+- **8 more model providers.** Via the built-in proxy: **Groq, Cerebras, xAI (Grok),
+  Mistral, Together AI, Fireworks** — and **local Ollama / LM Studio that need NO API
+  key** (just run the server). Plus **Kimi (Moonshot)** talking direct. That's **18
+  providers built in**, plus your own custom ones.
+- **Live model lists** — provider pickers now fetch each provider's *current* models
+  (on Connect, and when you open an agent's brain), so newly-released models always show
+  up — no more stale hard-coded list.
+- **Verification loop** (opt-in, Settings → Skills) — a skeptical reviewer double-checks
+  delegated work before it reaches the CEO, handing it back once for fixes if something's
+  off. Off by default (it costs an extra pass).
+- **Agents can build workflows.** Ask an agent to capture a plan and it saves an editable
+  workflow into the Builder (a new built-in **Build Workflow** skill teaches the syntax);
+  and the Builder gains **🪄 Draft with Director** — describe a goal, get a workflow to edit.
+- **Approve / reject proposals in-place** — when the team pitches a project, act right in
+  the chat *or* the feed; no need to open 🗂 TASKS.
+- **`bagidea brains`** CLI — every provider's connect status + each agent's model and live
+  context usage.
+
+**Improved**
+- **Built-in skills are protected** — the baseline skills (plugin building, office control,
+  Build Workflow…) are read-only; only your own / agent-learned skills can be edited or
+  deleted. The agent editor's **Skills & Tools** are now searchable **add-dropdowns** that
+  show only what's assigned (no more wall of chips).
+- **The Director (main) is locked as the office manager** — orchestrate-and-delegate is its
+  primary job and survives any prompt edit, so work can always be routed.
+- **Workflow Builder**: example workflows are read-only (Save forks an editable copy), a
+  save now confirms before overwriting your own, and the confirm dialog is on-brand.
+- **Redesigned chat-head orb** — a crisp neon energy-ring (a cyan→purple glow that turns),
+  replacing the old jagged edge; easier to spot on the desktop.
+- New UI strings translated across all 14 languages.
+
+**Fixed**
+- Cold-boot dark / jagged orb and splash — now crisp via per-pixel transparency.
+- Server-room fire crackle no longer loops forever after an agent puts it out.
+- The editor's save dialog is now an on-brand themed modal, not raw grey Godot chrome.
+
+## [0.8.2] — Cold-boot dark orb: the real fix
+
+**Fixed**
+- **The chat-head orb's logo is now embedded in the app**, so it always shows. v0.8.1
+  tried to retry the HTTP fetch, but the very first failure on a cold boot could be
+  missed (the image started loading before the retry was wired) and the orb stayed dark
+  even after the daemon was up. The logo no longer touches the network at all — it's
+  baked into the binary as a data URI — so the orb comes up correctly every time,
+  regardless of whether the daemon is ready yet.
+
+## [0.8.1] — Fix the cold-boot dark orb
+
+**Fixed**
+- **The floating chat-head orb no longer stays dark after a reboot.** On a cold boot
+  the shell paints the orb before the daemon's web server is up, so its logo 404'd and
+  a one-shot fallback left it dark until a manual `bagidea restart`. The orb now retries
+  loading its logo until the daemon answers (then drops the dark fallback) — so it comes
+  up correctly on its own.
+
+## [0.8.0] — Swappable brains: run each agent on any model
+
+The big one. Every agent can now run on a different model/provider — keep the
+Director on Claude, put the builders on cheaper models, and cut cost without
+losing any of Claude Code's tools, skills, or sessions. Claude Code stays the
+engine; only the backend model swaps. Defaults to Claude and fails open, so
+nothing changes until you opt an agent in.
+
+**Added**
+- **Per-agent brain picker** (✏️ edit agent → 🧠 BRAIN): choose the provider +
+  model that powers each agent.
+- **Providers out of the box:** Claude, GLM, DeepSeek, Qwen, MiniMax (talk
+  straight to their Anthropic-compatible endpoints), plus **OpenAI, Gemini,
+  OpenRouter, NVIDIA, and your own custom providers** through a **built-in,
+  zero-dependency proxy** — no LiteLLM or Python to install.
+- **🧠 MODELS / PROVIDERS** section in CONNECT: paste a key → Connect → ✅, with
+  sub-categories, masked keys everywhere, a "test & fetch models" check, curated
+  usable-model lists, and an auto-picked default model. The Claude card
+  auto-detects login vs. API key.
+- **🧠 BRAINS monitor** (Security Center sidebar): every provider's connect status
+  and every agent's model + a live context-usage bar.
+- **Model + context meter in chat:** each agent message is tagged with the model
+  that produced it, and the thread bar shows how full that model's context window
+  is (e.g. `gpt-4o · 39k/128k`).
+- **STATS now covers every provider** — estimated spend per provider (from real
+  token usage) folded into the daily total.
+- **Typing indicator** — bouncing dots while an agent is spinning up / working, so
+  it never looks frozen.
+- **Cancel a running task** mid-flight (⏹ in the NOW-WORKING strip).
+- **Models & Providers guide** in the docs.
+
+**Improved**
+- **Automatic context management for every model**, Claude-Code style: the office
+  proactively **auto-compacts** a long thread (summarize → continue on a fresh
+  thread) *before* it overflows, and reactively recovers from rate/context limits
+  — carrying your view across to the new thread so nothing looks stuck.
+- Swapped-in models now answer truthfully about **which model they are**.
+- All new UI is translated into the full set of **14 languages**.
+
+**Fixed**
+- Rock-solid proxy: buffers the upstream reply, synthesizes clean Anthropic
+  streaming, self-heals common OpenAI parameter quirks, and surfaces every error
+  instead of hanging. Transient rate-limits now back off and retry rather than
+  failing the turn.
+- A delegate's report-back stays visible in the CEO pane even when the Director
+  auto-compacts onto a new thread.
+- Many polish fixes: CONNECT scrollbar jump, cold-boot show/hide handle, themed
+  model dropdown, and the thread-bar layout with long model names.
+
 ## [0.7.25] — Remove the custom-character experiment
 
 **Removed**

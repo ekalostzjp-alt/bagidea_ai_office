@@ -5,7 +5,7 @@
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
-const { spawn, execFileSync, execSync } = require("child_process");
+const { spawn, execFileSync } = require("child_process");
 
 const ROOT = path.join(__dirname, "..");
 const BASE = "http://127.0.0.1:8787";
@@ -93,6 +93,7 @@ function help() {
 
   head("Team & work");
   row("agents", "Roster — roles · voices · tools");
+  row("brains", "Per-agent model + provider connect status");
   row("projects", "Projects + who is working on them");
   row('open "<project>"', "Open a project window");
   row("editor", "Open the 3D Office Editor");
@@ -117,7 +118,6 @@ function help() {
   row("plugin install <git-url>", "Add a plugin · plugin remove <id>");
 
   head("Maintenance");
-  row("doctor", "Diagnose the install — what's set up, what's missing");
   row("fixmic", "Reset Windows voice-typing if it's stuck");
   row("--version, -v", "Show version");
   row("--help, -h", "Show this screen");
@@ -289,97 +289,6 @@ if (cmd === "uninstall") {
     return;
   }
 
-  // doctor — diagnose the install. Works whether or not the daemon is up, so it
-  // lives ABOVE the daemon gate; the daemon/keys/version sections check daemonUp
-  // themselves and degrade to a warning when it's down.
-  if (cmd === "doctor") {
-    banner();
-    let pass = 0, fail = 0, warns = 0;
-
-    // (1) Prerequisites — external tools on PATH. execSync runs a shell so
-    // Windows .cmd shims (claude/cargo) resolve; `bin` is a fixed literal (no
-    // injection, no spaced path) — and a bare command string avoids DEP0190.
-    head("Prerequisites");
-    const tool = (bin, label, how) => {
-      try {
-        const v = execSync(`${bin} --version`,
-          { stdio: ["ignore", "pipe", "ignore"] }).toString().trim().split("\n")[0];
-        ok(`${label} ${c.gray}${v}${c.reset}`); pass++;
-      } catch { bad(`${label} not found — ${how}`); fail++; }
-    };
-    tool("node", "Node.js", "install Node 18+ from nodejs.org");
-    tool("git", "git", "install Git from git-scm.com");
-    tool("cargo", "Rust (cargo)", "install from rustup.rs (needed to build the shell)");
-    tool("claude", "Claude Code CLI", "npm i -g @anthropic-ai/claude-code, then run `claude` once to log in");
-
-    // (2) Build artifacts — shell exe + the two hook configs the installer wires
-    // (workspace/.claude/settings.json was the fresh-clone installer bug).
-    head("Build artifacts");
-    if (findShellExe()) { ok(`shell executable ${c.gray}${findShellExe()}${c.reset}`); pass++; }
-    else { bad("shell exe missing — build it: `cargo build --release` in shell/ (or re-run the installer)"); fail++; }
-    for (const [rel, what] of [[".claude/settings.json", "your-sessions hook"],
-                               ["workspace/.claude/settings.json", "permission-broker hook"]]) {
-      if (fs.existsSync(path.join(ROOT, rel))) { ok(`${rel} ${c.gray}(${what})${c.reset}`); pass++; }
-      else { bad(`${rel} missing (${what}) — re-run the installer / build script to wire hooks`); fail++; }
-    }
-
-    // (5) Footgun — a space in the install path breaks --mcp-config under
-    // spawn(shell:true). Warn, don't fail: most agents still work.
-    head("Environment");
-    if (/\s/.test(ROOT)) {
-      warn(`install path contains a space: ${c.gray}${ROOT}${c.reset}`); warns++;
-      info("agents with MCP tools can die before returning a result (spawn shell:true + spaced --mcp-config).");
-      info(`if a run dies empty, check the daemon log for lines prefixed ${c.accent}[claude]${c.reset} (e.g. "Invalid MCP configuration").`);
-    } else { ok("install path has no spaces"); pass++; }
-
-    // (3) Daemon
-    const up = await daemonUp();
-    head("Daemon");
-    if (up) {
-      ok("daemon is answering on :8787"); pass++;
-      try {
-        const h = await req("GET", "/health");
-        info(`clients ${h.clients} · worktree ${h.wt ? "✓" : "✗"} · pending perms ${h.pendingPerms}`);
-      } catch {}
-    } else { warn("daemon not running on :8787 — start it with `bagidea start`"); warns++; }
-
-    // (4) API keys — optional, so a missing key is ! not ✗.
-    head("API keys");
-    if (up) {
-      try {
-        const f = await req("GET", "/features");
-        if (f.openai) { ok("OpenAI key set"); pass++; } else { warn("OpenAI key not set — image/voice transcription stay off (optional)"); warns++; }
-        if (f.gemini) { ok("Gemini key set"); pass++; } else { warn("Gemini key not set — TTS/realtime voice stay off (optional)"); warns++; }
-      } catch { warn("couldn't read /features"); warns++; }
-    } else info("(daemon down — keys not checked)");
-
-    // (6) Version
-    head("Version");
-    let ver = "0.0.0";
-    try { ver = fs.readFileSync(path.join(ROOT, "VERSION"), "utf8").trim(); } catch {}
-    ok(`local version ${c.accent}v${ver}${c.reset}`); pass++;
-    if (up) {
-      try {
-        const v = await req("GET", "/version");
-        if (v && v.updateAvailable) { warn(`update available: ${c.accent}v${v.latest}${c.reset} — run \`bagidea update\``); warns++; }
-        else if (v && v.latest) { ok("on the latest version"); pass++; }
-      } catch {}
-    }
-
-    // summary
-    rule();
-    const total = pass + fail + warns;
-    if (fail === 0)
-      console.log(`  ${c.ok}${c.bold}✓ ${pass}/${total} checks passed${c.reset}`
-        + (warns ? `  ${c.warn}${warns} warning${warns > 1 ? "s" : ""}${c.reset}` : "")
-        + `  ${c.gray}— install looks healthy${c.reset}`);
-    else
-      console.log(`  ${c.err}${c.bold}✗ ${fail} problem${fail > 1 ? "s" : ""} found${c.reset}`
-        + `  ${c.gray}(${pass} ok · ${warns} warn) — fix the ✗ items above${c.reset}`);
-    console.log("");
-    return;
-  }
-
   // ---- everything below needs the daemon --------------------------------------
   if (!(await daemonUp())) return NOT_RUNNING();
 
@@ -456,6 +365,25 @@ if (cmd === "uninstall") {
       console.log(`  ${c.bold}${a.name}${c.reset} ${c.gray}${id}${c.reset}  ${a.role} ${c.gray}· tier ${a.tier || 3}${a.voice ? ` · 🗣 ${a.voice}` : ""}${c.reset}`);
       console.log(`  ${c.gray}🎯 ${(a.skills || []).length} skills · 🔧 ${(a.tools || []).join(", ") || "read-only"}${c.reset}\n`);
     }
+    return;
+  }
+
+  if (cmd === "brains") {
+    const b = await req("GET", "/brains");
+    const fmtK = (n) => (n >= 1000 ? Math.round(n / 1000) + "k" : String(n || 0));
+    head("Providers");
+    for (const p of b.providers || []) {
+      const dot = p.connected ? `${c.ok}●${c.reset}` : `${c.gray}○${c.reset}`;
+      const star = p.id === b.defaultProvider ? ` ${c.warn}★${c.reset}` : "";
+      console.log(`  ${dot} ${c.bold}${p.label}${c.reset}${star} ${c.gray}· ${(p.agents || []).length} agent${c.reset}`);
+    }
+    head("Agents · brains");
+    for (const a of b.agents || []) {
+      const u = a.usage;
+      const ctx = u ? `  ${c.gray}📊 ${fmtK(u.in)}/${fmtK(u.win)} (${u.pct}%)${c.reset}` : "";
+      console.log(`  ${c.bold}${a.name}${c.reset} ${c.gray}${a.role || ""}${c.reset}  🧠 ${a.tag}${ctx}`);
+    }
+    console.log("");
     return;
   }
 

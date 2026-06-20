@@ -1,0 +1,51 @@
+name: Sync sponsors
+
+# Pulls the live GitHub Sponsors list into web/sponsors.json (+ the README
+# block) so the website and README update themselves. The website redeploy is
+# handled by pages.yml when web/** changes here.
+#
+# One-time setup: create a classic PAT of the @bagidea account with scope
+# `read:user`, then add it as the repo secret SPONSORS_TOKEN
+# (Settings -> Secrets and variables -> Actions -> New repository secret).
+
+on:
+  schedule:
+    - cron: "17 */6 * * *" # every 6 hours
+  workflow_dispatch: {} # run manually from the Actions tab
+  push:
+    branches: [main]
+    paths:
+      - "web/sponsors.manual.json"
+      - "scripts/sync-sponsors.mjs"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sponsors-sync
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Sync sponsors
+        env:
+          SPONSORS_TOKEN: ${{ secrets.SPONSORS_TOKEN }}
+          SPONSORS_LOGIN: bagidea
+        run: node scripts/sync-sponsors.mjs
+      - name: Commit changes
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet -- web/sponsors.json README.md; then
+            echo "no sponsor changes"
+            exit 0
+          fi
+          git add web/sponsors.json README.md
+          git commit -m "chore(sponsors): sync sponsor wall from GitHub Sponsors [skip ci]"
+          git push

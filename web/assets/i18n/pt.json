@@ -126,6 +126,7 @@
   "dn_lang": "Idiomas",
   "dn_cli": "Referência do CLI",
   "dn_faq": "FAQ",
+  "dn_changelog": "Registro de alterações ↗",
   "d_intro_h": "Introdução",
   "d_intro_p1": "BagIdea Office é um escritório de agentes de IA vivo que funciona como papel de parede do seu desktop Windows. Cada agente de IA na sua máquina se torna um funcionário em pixel art em um escritório HD-2D: eles caminham até suas mesas quando o trabalho real começa, se reúnem na Segurança para pedir permissão, fazem reuniões, aprendem habilidades, e as luzes seguem o seu horário local real.",
   "d_intro_p2": "Não é um painel e não é uma janela de chat — é um mundo que renderiza o verdadeiro estado das suas sessões Claude Code, execuções de agentes sem interface e scripts personalizados como personagens vivos, atrás dos ícones do seu desktop.",
@@ -179,5 +180,10 @@
   "d_faq_q3": "Quais plataformas são suportadas?",
   "d_faq_a3": "Windows 11 hoje. Backends de papel de parede para Linux e macOS estão no roadmap.",
   "d_faq_q4": "Posso criar meu próprio plugin?",
-  "d_faq_a4": "Sim — faça um fork do repositório de template oficial. Uma pessoa ou um agente pode criar um plugin funcional a partir dele em minutos; a especificação completa está no guia de plugins."
+  "d_faq_a4": "Sim — faça um fork do repositório de template oficial. Uma pessoa ou um agente pode criar um plugin funcional a partir dele em minutos; a especificação completa está no guia de plugins.",
+  "upd_eyebrow": "Sempre melhorando",
+  "upd_title": "Atualizado constantemente",
+  "upd_sub": "O BagIdea Office recebe atualizações o tempo todo — correções, novos recursos e ajustes. Cada escritório recebe um aviso de atualização com um clique.",
+  "upd_latest": "Mais recente",
+  "upd_cta": "Ver novidades →"
 }

@@ -42,4 +42,5 @@ This keeps two promises:
 - [ ] Godot scene loads: `godot/bin/BagIdeaOffice.exe --headless --check-only --quit`
       (only "leaked at exit" RID lines are fine — no `SCRIPT ERROR` / `Parse Error`).
 - [ ] Docs/README reflect the changes.
+- [ ] Add a `CHANGELOG.md` entry for the new version.
 - [ ] Bump `VERSION`, commit `release: vX.Y.Z`, push `main`.

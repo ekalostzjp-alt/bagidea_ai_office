@@ -1,0 +1,27 @@
+{
+  "_comment": "HAND-EDITED source for off-platform sponsors (those who don't go through GitHub Sponsors — e.g. WARRIX as a partner, or someone who paid directly). The sync script (scripts/sync-sponsors.mjs, run by .github/workflows/sponsors.yml) merges these with the live GitHub Sponsors list and writes the GENERATED web/sponsors.json. Edit THIS file for manual sponsors; never hand-edit web/sponsors.json (it gets overwritten). `tiers` here is the canonical tier config used in the output. `weight` is a private sort key (never displayed); WARRIX is pinned first via a huge weight. Logos must be local files under web/img/sponsors/ (never hotlink CDN/FB URLs — they expire).",
+  "tiers": {
+    "gold":      { "label": "Gold Partner",   "min": 3000 },
+    "silver":    { "label": "Silver Partner", "min": 300 },
+    "bronze":    { "label": "Bronze / Backer", "min": 30 },
+    "supporter": { "label": "Supporter",      "min": 1 }
+  },
+  "sponsors": [
+    {
+      "name": "WARRIX",
+      "tier": "gold",
+      "weight": 1000000,
+      "url": "https://www.warrix.co.th",
+      "logo": "img/sponsors/warrix.png",
+      "since": "2026-05"
+    },
+    {
+      "name": "Reuannamphung",
+      "tier": "supporter",
+      "weight": 16.95,
+      "url": "https://www.facebook.com/Reuannamphung",
+      "logo": "img/sponsors/reuannamphung.jpg",
+      "since": "2026-06"
+    }
+  ]
+}

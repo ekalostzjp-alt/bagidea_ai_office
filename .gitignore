@@ -128,3 +128,4 @@ daemon/tests/_*.js
 
 # Stray MCP config dumps from botched path redirects (root-level garbage):
 /*mcp_test_real.json
+daemon/proxy.log
